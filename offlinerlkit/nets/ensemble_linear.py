@@ -49,5 +49,5 @@ class EnsembleLinear(nn.Module):
         self.saved_bias.data[indexes] = self.bias.data[indexes]
     
     def get_decay_loss(self) -> torch.Tensor:
-        decay_loss = self.weight_decay * (0.5*((self.weight**2).sum()))
+        decay_loss = self.weight_deca256y * (0.5*((self.weight**2).sum()))
         return decay_loss

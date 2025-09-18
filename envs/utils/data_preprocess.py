@@ -1,4 +1,5 @@
 import os
+import sys
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 import torch
@@ -10,6 +11,8 @@ from collections import defaultdict
 import pickle
 import h5py
 from tqdm import tqdm
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+from rl_preparation.state_actuator_spaces_new import action_space
 
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
 
@@ -27,6 +30,16 @@ def _post_process(general_data, offline_dst):
     general_data['pre_actions'] = np.clip(general_data['pre_actions'], general_data['action_lower_bounds'], general_data['action_upper_bounds'])
     general_data['actions'] = np.clip(general_data['actions'], general_data['action_lower_bounds'], general_data['action_upper_bounds'])
 
+def _save_bounders(general_data, offline_dst):
+    # save the actuator bounds
+    general_data['action_positions_lower_bounds'] = offline_dst['action_positions_lower_bounds'].copy()
+    general_data['action_positions_upper_bounds'] = offline_dst['action_positions_upper_bounds'].copy()
+    general_data['action_velocity_lower_bounds'] = offline_dst['action_velocity_lower_bounds'].copy()
+    general_data['action_velocity_upper_bounds'] = offline_dst['action_velocity_upper_bounds'].copy()
+    general_data['states_positions_lower_bounds'] = offline_dst['states_positions_lower_bounds'].copy()
+    general_data['states_positions_upper_bounds'] = offline_dst['states_positions_upper_bounds'].copy()
+    general_data['states_velocity_lower_bounds'] = offline_dst['states_velocity_lower_bounds'].copy()
+    general_data['states_velocity_upper_bounds'] = offline_dst['states_velocity_upper_bounds'].copy()
 
 def _dump_data(data_path, data_dict):
     with h5py.File(data_path, 'w') as hdf:
@@ -34,11 +47,11 @@ def _dump_data(data_path, data_dict):
             hdf.create_dataset(key, data=value)
 
 
-def get_raw_data(offline_data_dir, action_bound_file, shot_list, warmup_steps): 
+def get_raw_data(offline_data_dir, action_bound_file, state_bound_file, shot_list, warmup_steps): 
 
     offline_data = {}
     # get main components
-    hdf = h5py.File(offline_data_dir + '/full.hdf5', 'r')
+    hdf = h5py.File(offline_data_dir + '/tr.hdf5', 'r')
     offline_data['observations'] = hdf['states'][:]
     offline_data['observation_deltas'] = hdf['next_states'][:]
     offline_data['pre_actions'] = hdf['actuators'][:]
@@ -79,6 +92,10 @@ def get_raw_data(offline_data_dir, action_bound_file, shot_list, warmup_steps):
     with open(action_bound_path, 'r') as file:
         data_dict = yaml.safe_load(file)
     
+    state_bound_path = current_dir + '/state_bounds/' + state_bound_file
+    with open(state_bound_path, 'r') as file:
+        state_data_dict = yaml.safe_load(file)
+    
     offline_data['action_lower_bounds'], offline_data['action_upper_bounds'] = [], []
     for act in data_info['actuator_space']:
         lb, ub = data_dict[act]
@@ -88,6 +105,50 @@ def get_raw_data(offline_data_dir, action_bound_file, shot_list, warmup_steps):
 
     offline_data['action_lower_bounds'] = np.array(offline_data['action_lower_bounds'])
     offline_data['action_upper_bounds'] = np.array(offline_data['action_upper_bounds'])
+
+    basenames = [act[:-len('_velocity')] if 'velocity' in act else act 
+                 for act in action_space ]
+    
+    _labels_are_velocities = 'velocity' in data_info['next_state_space'][0]
+    for bn in basenames:
+        assert bn in data_dict, f'{bn} not found in bounds.'
+        assert (bn + '_velocity') in data_dict, f'{bn}_velocity not found in bounds.'
+    
+    offline_data['action_positions_lower_bounds'] = np.array([data_dict[bn][0] for bn in basenames])
+    offline_data['action_positions_upper_bounds'] = np.array([data_dict[bn][1] for bn in basenames])
+    offline_data['action_velocity_lower_bounds'] = np.array([data_dict[bn + '_velocity'][0] for bn in basenames])
+    offline_data['action_velocity_upper_bounds'] = np.array([data_dict[bn + '_velocity'][1] for bn in basenames])
+
+    if 'next_state_space' in data_info:
+        state_pos_lower, state_pos_upper = [], []
+        state_vel_lower, state_vel_upper = [], []
+        
+        for next_name in data_info['next_state_space']:
+            if _labels_are_velocities:
+                pos_name = next_name[:-len('_velocity')]
+                vel_name = next_name
+            else:
+                pos_name = next_name  
+                vel_name = next_name + '_velocity'
+            
+            if pos_name in state_data_dict:
+                state_pos_lower.append(state_data_dict[pos_name][0])
+                state_pos_upper.append(state_data_dict[pos_name][1])
+            else:
+                state_pos_lower.append(-np.inf)
+                state_pos_upper.append(np.inf)
+            
+            if vel_name in state_data_dict:
+                state_vel_lower.append(state_data_dict[vel_name][0])
+                state_vel_upper.append(state_data_dict[vel_name][1])
+            else:
+                state_vel_lower.append(-np.inf)
+                state_vel_upper.append(np.inf)
+        
+    offline_data['states_positions_lower_bounds'] = np.array(state_pos_lower)
+    offline_data['states_positions_upper_bounds'] = np.array(state_pos_upper)
+    offline_data['states_velocity_lower_bounds'] = np.array(state_vel_lower)
+    offline_data['states_velocity_upper_bounds'] = np.array(state_vel_upper)
 
     # we only take shots in the shot list
     ref_start_index = defaultdict(list)
@@ -120,7 +181,7 @@ def get_raw_data(offline_data_dir, action_bound_file, shot_list, warmup_steps):
     return offline_data
 
 
-def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, tracking_data_path, rl_shot_list, il_shot_list, tracking_shot_list, device):
+def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, tracking_data_path, rl_shot_list, il_shot_list, tracking_shot_list, device, code_base):
     rl_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
                 'terminals': [], 'time_step': [], 'hidden_states': []}
     il_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
@@ -133,6 +194,7 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
     for memb in all_models:
         memb.to(device)
         memb.eval()
+    
     
     # go over the training dataset, generate/collect the hidden states, time-costly!
     # TODO: filter out shots that are too short
@@ -177,7 +239,6 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
                 tracking_data[cur_shot]['tracking_next_states'].append(next_state.copy())
                 tracking_data[cur_shot]['tracking_pre_actions'].append(pre_action.copy())
                 tracking_data[cur_shot]['tracking_actions'].append(cur_action.copy())
-
             # end of shot - time to get the hidden states
             if offline_dst['terminals'][t]:
                 terminated = True
@@ -196,7 +257,8 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
                     for memb in all_models:
                         memb.reset() # optional
                         net_input_n = memb.normalizer.normalize(net_input, 0)
-                        memb_out = memb.get_mem_out(net_input_n).unsqueeze(1)
+                        pred_out, _ = memb.predict(net_input_n) # modified get_mem_out .unsqueeze(1)
+                        memb_out = torch.FloatTensor(pred_out).unsqueeze(1)
                         memb_out_list.append(memb_out)
                     shot_hidden_states = torch.stack(memb_out_list, dim=1).cpu().tolist()
                     rl_data['hidden_states'].extend(shot_hidden_states)
@@ -210,21 +272,24 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
             #     cur_state = next_state # TODO: which one is better
             # else:
             cur_state = offline_dst['observations'][t]
-    
+            
+
     # post process
     _post_process(rl_data, offline_dst)
     _post_process(il_data, offline_dst)
-
-    # same for the tracking data
-    for shot_id in tracking_data:
-        for k in tracking_data[shot_id]:
-            tracking_data[shot_id][k] = np.array(tracking_data[shot_id][k])
-
-        tracking_data[shot_id]['tracking_pre_actions'] = np.clip(tracking_data[shot_id]['tracking_pre_actions'], 
-                                                                 rl_data['action_lower_bounds'], rl_data['action_upper_bounds'])
-        tracking_data[shot_id]['tracking_actions'] = np.clip(tracking_data[shot_id]['tracking_actions'], 
-                                                             rl_data['action_lower_bounds'], rl_data['action_upper_bounds'])
+    _save_bounders(rl_data, offline_dst)
+    _save_bounders(il_data, offline_dst)
     
+    if code_base == 'new':
+        # same for the tracking data
+        for shot_id in tracking_data:
+            for k in tracking_data[shot_id]:
+                tracking_data[shot_id][k] = np.array(tracking_data[shot_id][k])
+
+            tracking_data[shot_id]['tracking_pre_actions'] = np.clip(tracking_data[shot_id]['tracking_pre_actions'], 
+                                                                    offline_dst['action_lower_bounds'],offline_dst['action_upper_bounds'])
+            tracking_data[shot_id]['tracking_actions'] = np.clip(tracking_data[shot_id]['tracking_actions'], 
+                                                                offline_dst['action_lower_bounds'], offline_dst['action_upper_bounds'])
     # save the training data
     _dump_data(rl_data_path, rl_data)
     _dump_data(il_data_path, il_data)
@@ -235,5 +300,4 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
             group = hdf.create_group(str(shot_id))
             for key, value in shot_data.items():
                 group.create_dataset(key, data=value)
-
 

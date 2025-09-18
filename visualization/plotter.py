@@ -29,7 +29,7 @@ def plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur
     # save the figure 
     save_path = os.path.join(log_folder, f"{shot_id}_tracking_quantities.png")
     plt.savefig(save_path)
-    plt.close(fig)  
+    plt.close(fig)
 
 def plot_actions(time_array, real_act_array, cur_act_array, act_names, shot_id, log_folder):
     m = len(act_names)  

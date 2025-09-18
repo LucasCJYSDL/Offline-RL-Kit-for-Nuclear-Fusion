@@ -46,9 +46,10 @@ class EnsembleDynamicsModel(nn.Module):
         means, stds = [], []
 
         context = torch.no_grad() if not with_grad else nullcontext()
-
+        
         with context:
             for memb in self.all_models:
+                
                 net_input_n = memb.normalizer.normalize(net_input, 0)
                 net_output_n, info = memb.single_sample_output_from_torch(net_input_n, with_grad=with_grad) # we have updated the rpnn class in the dynamics toolbox
                 mean = memb.normalizer.unnormalize(info["mean_predictions"], 1)

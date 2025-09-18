@@ -45,41 +45,42 @@ track_signals = [
 #                 "q_EFIT01_component1", 
 #                 "q_EFIT01_component2"]
 
-# obs_in_use = ["rotation_component1", 
-#               "rotation_component2", 
-#               "rotation_component3", 
-#               "rotation_component4"]
+obs_in_use = ["rotation_component1", 
+              "rotation_component2", 
+              "rotation_component3", 
+              "rotation_component4"]
+#obs_in_use =["betan_EFIT01"]
 # obs_in_use=[ "dens_component1", 
 #                  "dens_component2", 
 #                  "dens_component3", 
 #                  "dens_component4" ]
-obs_in_use = [
-    'betan_EFIT01',
-    "temp_component1",
-    "temp_component2",
-    "temp_component3",
-    "temp_component4",
-    "itemp_component1",
-    "itemp_component2",
-    "itemp_component3",
-    "itemp_component4",
-    "dens_component1",
-    "dens_component2",
-    "dens_component3",
-    "dens_component4",
-    "rotation_component1",
-    "rotation_component2",
-    "rotation_component3",
-    "rotation_component4",
-    "pres_EFIT01_component1",
-    "pres_EFIT01_component2",
-    "q_EFIT01_component1",
-    "q_EFIT01_component2"
-]
+# obs_in_use = [
+#     'betan_EFIT01',
+#     "temp_component1",
+#     "temp_component2",
+#     "temp_component3",
+#     "temp_component4",
+#     "itemp_component1",
+#     "itemp_component2",
+#     "itemp_component3",
+#     "itemp_component4",
+#     "dens_component1",
+#     "dens_component2",
+#     "dens_component3",
+#     "dens_component4",
+#     "rotation_component1",
+#     "rotation_component2",
+#     "rotation_component3",
+#     "rotation_component4",
+#     "pres_EFIT01_component1",
+#     "pres_EFIT01_component2",
+#     "q_EFIT01_component1",
+#     "q_EFIT01_component2"
+# ]
 
 # acts_in_use= ['pinj','tinj', 'bt_magnitude', 'bt_is_positive','ech_pwr_total']
 
-acts_in_use= ['pinj','tinj', 'gasA', 'bt_magnitude','bt_is_positive','ech_pwr_total']
+acts_in_use= ['pinj','tinj', 'gasA','ech_pwr_total']
 
 action_space = [
     'pinj_velocity',
@@ -123,8 +124,8 @@ min_duty_cycle = {
 }
 
 targets_in_obs = True
-k_step_targets_in_obs = 1 #10 # default 1 which is current step only
-discrete_k_target_idx_in_obs = None  #[0,9]
+k_step_targets_in_obs = 10 # default 1 which is current step only
+discrete_k_target_idx_in_obs = [0,9]
 add_tm_probs_to_obs = False
 
 beam_bounder = D3dTotalPowerTorqueBounding(
@@ -139,17 +140,17 @@ target_highs= [1.0847411701303655] # 2.5
 
 actuator_bounder = CompositeActuatorBounder(bounders=[beam_bounder])
 
-# reward_function = ProfileTrackingReward(
-#         unnormalize=False,
-#         profile_name=["rotation"],
-#         square_costs=True,
-#         track_signals=track_signals,
-#     )
+reward_function = ProfileTrackingReward(
+        unnormalize=False,
+        profile_name=["rotation"],
+        square_costs=True,
+        track_signals=track_signals,
+    )
 
-reward_function = TrackingReward(
-    track_signals=track_signals,
-    track_coefficients = [1],
-)
+# reward_function = TrackingReward(
+#     track_signals=track_signals,
+#     track_coefficients = [1],
+# )
 
 horizon = 150
 

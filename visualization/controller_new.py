@@ -23,34 +23,14 @@ class Controller:
         
         # load up weights
         cwd = os.getcwd()
-        # actor_path = os.path.join(cwd, args.actor_path, 'checkpoint', 'policy.pth')
-        actor_path = os.path.join(args.actor_path, 'weights.pt')
+        actor_path = os.path.join(cwd, args.actor_path, 'checkpoint', 'policy.pth')
         checkpoint = torch.load(actor_path, map_location=args.device)
 
-        key_map = {
-            "fc0.weight": "backbone.model.0.weight",
-            "fc0.bias": "backbone.model.0.bias",
-            "fc1.weight": "backbone.model.2.weight",
-            "fc1.bias": "backbone.model.2.bias",
-            "last_fc.weight": "dist_net.mu.weight",
-            "last_fc.bias": "dist_net.mu.bias",
-            "last_fc_log_std.weight": "dist_net.sigma.weight",
-            "last_fc_log_std.bias": "dist_net.sigma.bias",
-        }
-
-        # Create a new state_dict with keys mapped according to key_map
         state_dict = {}
         for k, v in checkpoint.items():
-            if k.startswith("critic"):  
+            if k.startswith("critic"):
                 continue
-            new_key = key_map.get(k, k)
-            state_dict[new_key] = v
-
-        # state_dict = {}
-        # for k, v in checkpoint.items():
-        #     if k.startswith("critic"):
-        #         continue
-        #     state_dict[k.replace("actor.", "")] = v 
+            state_dict[k.replace("actor.", "")] = v 
 
         self.actor.load_state_dict(state_dict)
         self.actor.eval() # evaluation only
