@@ -30,7 +30,7 @@ from rl_preparation.state_actuator_spaces_new import (
     horizon
 )
 from rl_preparation.process_raw_data import raw_data_dir, rl_data_path, il_data_path, tracking_data_path, reference_shot, training_model_dir, evaluation_model_dir, change_every
-from envs.utils.setup_targets import fixed_ref_shot_targets, step_function_targets, original_trajectory_targets, uniform_targets,original_trajectory_targets_new
+from envs.utils.setup_targets import fixed_ref_shot_targets, step_function_targets, original_trajectory_targets, uniform_targets,original_trajectory_targets_new,uniform_targets_new
 
 # load the offline dataset from the disk
 def load_offline_data(env, tracking_target, is_il):
@@ -105,7 +105,7 @@ def load_offline_data(env, tracking_target, is_il):
                 if tracking_target in ['dens', 'rotation']:
                     tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets_new(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
                 else:
-                    tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets(target_lows, target_highs, horizon)                
+                    tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets_new(target_lows, target_highs, tracking_data[int(shot_id)]['tracking_states'])                
                 # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(ref_shot, offline_data['index_list'], None, change_every)
                 #tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
             elif env == "fusion_env":
@@ -122,11 +122,9 @@ def load_offline_data(env, tracking_target, is_il):
     elif env == "profile_control":
         #change tariningtargets
         if tracking_target in ['dens', 'rotation']:
-            print("x----x----x--")
             offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'])
-            print("x-----x----x---")
         else:
-            offline_data['tracking_ref'] = uniform_targets(target_lows, target_highs, horizon)
+            offline_data['tracking_ref'] = uniform_targets_new(target_lows, target_highs, offline_data['observations'])
             #offline_data['tracking_ref'] = step_function_targets(offline_data['observations'], offline_data['index_list'], offline_data['terminals'], change_every)
         # TODO: usig 'next_observations'
     elif env == "fusion_env":

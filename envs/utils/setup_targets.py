@@ -70,6 +70,29 @@ def uniform_targets(target_lows, target_highs, horizon):
                                 size=len(target_lows))
     return np.repeat(targets[np.newaxis,:], horizon, axis=0)
 
+def uniform_targets_new(target_lows, target_highs,obs_seq):
+    """
+    Generate uniform random targets within specified bounds.
+    
+    Args:
+        target_lows: List of lower bounds for each target dimension
+        target_highs: List of upper bounds for each target dimension  
+        num_targets: Number of target sequences to generate
+        horizon: Length of each target sequence
+        
+    Returns:
+        targets: Array of shape (horizon, target_dimensions)
+    """
+    assert len(target_lows) == len(target_highs), \
+        f'Length of target_lows must match length of target_highs but received {len(target_lows)} and {len(target_highs)}'
+    
+    targets = np.random.uniform(target_lows, target_highs,
+                                size=len(target_lows))
+    tot_len = len(obs_seq)
+    return np.repeat(targets[np.newaxis,:], tot_len, axis=0)
+
+
+
 def original_trajectory_targets(obs_seq, target_idxs,horizon, terminal_seq, 
                                near_reference_target=False, eval_mode=False, 
                                fixed_profile_target=True):

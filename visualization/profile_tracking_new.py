@@ -25,10 +25,10 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control") 
-    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="betan_EFIT01", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
-    parser.add_argument("--actor_path", type=str, default="log/rotation/ppo/seed_1&timestamp_25-0920-120238", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="log/betan_EFIT01/ppo/seed_1&timestamp_25-0921-120157", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256, 256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
