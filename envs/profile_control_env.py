@@ -13,6 +13,7 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         self.tracking_states, self.tracking_pre_actions, self.tracking_actions = None, None, None
         self.eval_shot_list = list(tracking_data.keys())
         self.tracking_data = tracking_data
+        
 
     def get_eval_shot_list(self):
         """
@@ -30,7 +31,8 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         self.tracking_states, self.tracking_pre_actions, self.tracking_actions = self.tracking_data[self.ref_shot_id]['tracking_states'], \
                                                                                  self.tracking_data[self.ref_shot_id]['tracking_pre_actions'], \
                                                                                  self.tracking_data[self.ref_shot_id]['tracking_actions']
-        self.cur_shot_time_limit = self.tracking_states.shape[0]
+        #self.cur_shot_time_limit = self.tracking_states.shape[0]
+        self.cur_shot_time_limit = 150
         
         # randomly sample an initial time step
         # self.cur_time = random.randint(0, 9) # TODO

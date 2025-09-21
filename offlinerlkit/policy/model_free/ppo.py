@@ -244,7 +244,8 @@ class FusionPPOEnv(gym.Env):
         self.previous_action = self.offline_data['pre_actions'][idx].copy()
         self.time_step = self.offline_data['time_step'][idx]
         self.episode_length = 0
-
+        #save all
+        self.current_global_idx = idx
         # 重置动力学模型
         self.dynamics.reset()
 
@@ -264,6 +265,15 @@ class FusionPPOEnv(gym.Env):
         # 构建完整动作
         full_action = self.offline_data['full_actions'][0].copy()  # 获取动作模板
         full_action[self.action_idxs] = step_action
+
+        #add 
+        max_time_step=150
+        valid_time_step = min(self.time_step, max_time_step)
+
+        #add
+        max_data_idx = len(self.offline_data['terminals']) - 1
+        current_terminal_idx = min(self.current_global_idx, max_data_idx)
+        current_time_terminals = self.offline_data['terminals'][current_terminal_idx]
         
         # 使用动力学模型预测下一状态
         next_obs, reward, terminal, info = self.dynamics.step(
@@ -271,9 +281,9 @@ class FusionPPOEnv(gym.Env):
             pre_action=self.previous_action.reshape(1, -1),
             cur_action=full_action.reshape(1, -1),
             time_steps=np.array([self.time_step]),
-            time_terminals=np.array([False]),
+            time_terminals=np.array([current_time_terminals]),
             state_idxs=self.state_idxs,
-            batch_idxs=np.array([0])
+            batch_idxs=np.array([valid_time_step])
         )
 
         # 从info中获取完整的下一状态

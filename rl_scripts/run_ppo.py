@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import gymnasium as gym
 
-# 添加路径
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
@@ -21,10 +21,10 @@ from rl_preparation.get_rl_data_envs import get_rl_data_envs
 def get_args():
     parser = argparse.ArgumentParser(description="PPO for Nuclear Fusion Control")
     
-    # 基本参数
+    # 
     parser.add_argument("--algo-name", type=str, default="ppo")
     
-    # PPO超参数
+    # PPO hyperparameters
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--n-steps", type=int, default=2048 )
     parser.add_argument("--batch-size", type=int, default=512)
@@ -37,24 +37,24 @@ def get_args():
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256])
     
-    # 训练参数
-    parser.add_argument("--total-timesteps", type=int, default=1000000)
-    parser.add_argument("--eval-freq", type=int, default=10000)
+    # training parameters
+    parser.add_argument("--total-timesteps", type=int, default=10000)
+    parser.add_argument("--eval-freq", type=int, default=100)
     parser.add_argument("--eval-episodes", type=int, default=5)
-    parser.add_argument("--save-freq", type=int, default=100000)
+    parser.add_argument("--save-freq", type=int, default=1000)
     
-    # 环境参数
+    # environment parameter
     parser.add_argument("--max-episode-length", type=int, default=200)
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="betan_EFIT01") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=4)
     return parser.parse_args()
 
 class GymnasiumWrapper(gym.Env):
     """
-    将自定义环境包装为Gymnasium兼容的环境
+    self environment -> Gymnasium compatiable
     """
     def __init__(self, custom_env):
         super().__init__()

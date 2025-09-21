@@ -86,7 +86,7 @@ action_space = [
     'pinj_velocity',
     'tinj_velocity',
     'gasA_velocity',
-    # 'ech_pwr_total_velocity'
+    'ech_pwr_total_velocity'
     ]
 
 # computed_obs_in_use = [

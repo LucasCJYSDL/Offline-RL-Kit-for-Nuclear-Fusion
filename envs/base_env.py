@@ -20,7 +20,7 @@ class SA_processor: # used for both training and evaluation
         self.np_mid = ((bounds[1] + bounds[0]) / 2.0)[np.newaxis, :]
 
         # store the tracking taregts for both the training and evaluation data
-        training_data_size = offline_data['tracking_ref'].shape[0]
+        training_data_size = offline_data['tracking_ref'].shape[0] #151
         self.training_tracking_targets = np.array([offline_data['tracking_ref'][-1] for _ in range(training_data_size+1)])
         self.training_tracking_targets[:training_data_size] = offline_data['tracking_ref']
 
@@ -61,9 +61,11 @@ class SA_processor: # used for both training and evaluation
 
         if shot_id is None: # training data
             # batch_idx[batch_idx >= self.training_data_size] = self.training_data_size - 1
+            #batch_idx = np.clip(batch_idx, 0, len(self.training_tracking_targets) - 1)
             targets = self.training_tracking_targets[batch_idx]
         else:
             # batch_idx[batch_idx >= self.eval_data_sizes[shot_id]] = self.eval_data_sizes[shot_id] - 1
+            #boundary checkout
             targets = self.eval_tracking_targets[shot_id][batch_idx]
 
         if not is_np:
@@ -102,8 +104,10 @@ class SA_processor: # used for both training and evaluation
         if np.isscalar(time_step): # for evaluation
             assert shot_id is not None
             time_step = np.array([time_step])
+            #time_step = np.clip(time_step, 0, len(self.eval_tracking_targets[shot_id]) - 1)
             targets = self.eval_tracking_targets[shot_id][time_step]
         else:
+            #boundary checkout
             targets = self.training_tracking_targets[time_step] # for training
         # this design is flexible - we are using "-mse" as the reaward
         return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
@@ -136,6 +140,8 @@ class NFBaseEnv: # env for evaluation
         self.cur_time = None
         self.ref_shot_id = ref_shot_id
         self.time_limit = tracking_states.shape[0] # this should be the horizon of the reference shot
+
+        self.cur_shot_time_limit = 150
         self.tracking_states = np.array(tracking_states)
         self.tracking_pre_actions = np.array(tracking_pre_actions)
         self.tracking_actions = np.array(tracking_actions)
@@ -210,12 +216,19 @@ class NFBaseEnv: # env for evaluation
         reward = self.get_reward(return_state.cpu().numpy(), self.cur_time, shot_id=self.ref_shot_id)[0] # next state and current time step
         self.cur_time += 1
         self.pre_action = cur_action.clone()
+        
+        # add time limit
+        done = self.is_done(self.cur_time)
+        done = done | (self.cur_time >= self.cur_shot_time_limit)
 
-        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, self.is_done(self.cur_time), {"time_step": self.cur_time}
+        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, done, {"time_step": self.cur_time}
+
+        #return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, self.is_done(self.cur_time), {"time_step": self.cur_time}
 
     def get_reward(self, next_state, time_step, shot_id):
         return self.sa_processor.get_reward(next_state, time_step, shot_id)
         
     def is_done(self, time_step):
         # terminates when exceeding the time limit of the shot
-        return time_step >= self.time_limit
+        #return time_step >= self.time_limit
+        return time_step >= self.cur_shot_time_limit
