@@ -38,10 +38,10 @@ def get_args():
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256])
     
     # training parameters
-    parser.add_argument("--total-timesteps", type=int, default=10000)
-    parser.add_argument("--eval-freq", type=int, default=100)
+    parser.add_argument("--total-timesteps", type=int, default=1000000)
+    parser.add_argument("--eval-freq", type=int, default=100000)
     parser.add_argument("--eval-episodes", type=int, default=5)
-    parser.add_argument("--save-freq", type=int, default=1000)
+    parser.add_argument("--save-freq", type=int, default=100000)
     
     # environment parameter
     parser.add_argument("--max-episode-length", type=int, default=200)
@@ -229,7 +229,7 @@ def train(args=get_args()):
         dynamics_model,
         termination_fn,
         reward_fn,
-        penalty_coef=0.0  # PPO不需要不确定性惩罚
+        penalty_coef=0.5  # PPO不需要不确定性惩罚
     )
     
     # 创建PPO策略
