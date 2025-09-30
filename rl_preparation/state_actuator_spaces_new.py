@@ -20,7 +20,8 @@ track_signals = [
             #   "dens_component2", 
             #   "dens_component3", 
             #   "dens_component4",
-              "betan_EFIT01"]
+              "betan_EFIT01"
+              ]
 #!!! what you need to specify
 # which states/actuators are actually used
 # obs_in_use = ["betan_EFIT01",
@@ -89,20 +90,20 @@ action_space = [
     'ech_pwr_total_velocity'
     ]
 
-# computed_obs_in_use = [
-#     PTerm(signal_name="rotation_component1", target_idx=0),
-#     PTerm(signal_name="rotation_component2", target_idx=0),
-#     PTerm(signal_name="rotation_component3", target_idx=0),
-#     PTerm(signal_name="rotation_component4", target_idx=0),
-# ]
-
 computed_obs_in_use = [
-    # PTerm(signal_name="dens_component1", target_idx=0),
-    # PTerm(signal_name="dens_component2", target_idx=0),
-    # PTerm(signal_name="dens_component3", target_idx=0),
-    # PTerm(signal_name="dens_component4", target_idx=0),
-    PTerm(signal_name="betan_EFIT01", target_idx=0),
+    PTerm(signal_name="rotation_component1", target_idx=0),
+    PTerm(signal_name="rotation_component2", target_idx=0),
+    PTerm(signal_name="rotation_component3", target_idx=0),
+    PTerm(signal_name="rotation_component4", target_idx=0),
 ]
+
+# computed_obs_in_use = [
+#     # PTerm(signal_name="dens_component1", target_idx=0),
+#     # PTerm(signal_name="dens_component2", target_idx=0),
+#     # PTerm(signal_name="dens_component3", target_idx=0),
+#     # PTerm(signal_name="dens_component4", target_idx=0),
+#     PTerm(signal_name="betan_EFIT01", target_idx=0),
+# ]
 
 beams = ['30L', '30R', '150L', '150R', '210L', '210R', '330L', '330R']
 

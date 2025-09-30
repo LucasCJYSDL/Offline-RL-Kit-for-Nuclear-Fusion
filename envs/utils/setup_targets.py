@@ -150,7 +150,7 @@ def original_trajectory_targets(obs_seq, target_idxs,horizon, terminal_seq,
         targets = episode_targets
         s_id += horizon
     
-    return targets[:, target_idxs]
+    return targets[:, target_idxs]#150
 
 
 def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon, 
@@ -224,39 +224,41 @@ def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon,
     return target
 
 # new original_trajectory_targets
-def original_trajectory_targets_new(obs_seq, target_idxs, horizon, terminal_seq,
-                                   near_reference_target=False, eval_mode=False,
-                                   fixed_profile_target=True):
+
+def original_trajectory_targets_new(obs_seq, target_idxs,horizon, terminal_seq, 
+                               near_reference_target=False, eval_mode=False, 
+                               fixed_profile_target=True):
     """
     Generate targets based on observation sequence with profile processing.
-    Returns targets with length equal to len(terminal_seq) instead of fixed horizon.
-
+    Mimics OriginalTrajectoryTarget behavior.
+    
     Args:
         obs_seq: Observation sequence array, shape (total_steps, obs_dim)
-        target_idxs: Indices of target dimensions to extract
-        horizon: Horizon length for generating base targets (e.g., 150)
+        target_idxs: Indices of target dimensions to extract  
         terminal_seq: Terminal flags for episode boundaries
         near_reference_target: Whether to use nearby episodes as reference
         eval_mode: Whether in evaluation mode
         fixed_profile_target: Whether to use fixed profile targets
-
+    
     Returns:
-        targets: Array of shape (len(terminal_seq), len(target_idxs))
+        targets: Array of shape (total_steps, len(target_idxs))
     """
+
     tot_len = len(obs_seq)
     target_dim = len(target_idxs)
-
-    if terminal_seq is None: # a trick to handle the difference between general data and tracking data
-        terminal_seq = np.zeros((tot_len, ), dtype=bool)
+    
+    if terminal_seq is None:
+        terminal_seq = np.zeros((tot_len), dtype=bool)
         terminal_seq[-1] = True
-
-    # First generate the base targets using original function logic
-    base_targets = np.zeros((horizon, obs_seq.shape[1]), dtype=np.float32)
-
+    
+    #targets = np.zeros((horizon, obs_seq.shape[1]), dtype=np.float32)
+    
     # Split data into episodes based on terminal_seq
     episodes = _split_into_episodes(obs_seq, terminal_seq)
-
-    # Generate base targets for the first episode (or reference episode)
+    
+    # Generate targets for each episode
+    s_id = 0
+    targets = np.zeros((tot_len, obs_seq.shape[1]), dtype=np.float32)
     for episode_idx, episode_obs in enumerate(episodes):
         # Select reference episode
         # 与原环境逻辑不太一致需要修改
@@ -273,36 +275,110 @@ def original_trajectory_targets_new(obs_seq, target_idxs, horizon, terminal_seq,
         else:
             # Use current episode as reference
             ref_episode = episode_obs
-
-        # Generate base targets (horizon length)
-        base_targets = _generate_original_trajectory_targets(
+        
+        # Generate targets for this episode
+        episode_targets = _generate_original_trajectory_targets(
             ref_episode, target_idxs, horizon, eval_mode, fixed_profile_target
         )
-
-    # Now create new_targets with length tot_len
-    new_targets = np.zeros((tot_len, target_dim), dtype=np.float32)
-
-    e_id = 0
-    for i in range(tot_len):
-        if terminal_seq[i]:
-            # Episode ends at position i
-            if i - e_id < horizon:
-                # Within base targets range
-                new_targets[i] = base_targets[i - e_id, target_idxs]
-            else:
-                # Beyond base targets range, use last target
-                new_targets[i] = base_targets[horizon - 1, target_idxs]
-            e_id = i + 1
+    
+        episode_len = len(episode_obs)
+        
+        if episode_len <= 150:
+            # If episode is shorter than 150, take only the needed rows
+            targets[s_id:s_id+episode_len] = episode_targets[:episode_len]
         else:
-            # Within episode
-            if i - e_id < horizon:
-                # Within base targets range
-                new_targets[i] = base_targets[i - e_id, target_idxs]
-            else:
-                # Beyond base targets range, use last target
-                new_targets[i] = base_targets[horizon - 1, target_idxs]
+            # If episode is longer than 150, pad with the last value
+            targets[s_id:s_id+150] = episode_targets
+            # Repeat the last value for the remaining rows
+            last_value = episode_targets[-1]
+            targets[s_id+150:s_id+episode_len] = np.tile(last_value, (episode_len-150, 1))
+        
+        # Update s_id for next episode
+        s_id += episode_len
+    
+    return targets[:, target_idxs]#150
 
-    return new_targets
+
+
+# def original_trajectory_targets_new(obs_seq, target_idxs, horizon, terminal_seq,
+#                                    near_reference_target=False, eval_mode=False,
+#                                    fixed_profile_target=True):
+#     """
+#     Generate targets based on observation sequence with profile processing.
+#     Returns targets with length equal to len(terminal_seq) instead of fixed horizon.
+
+#     Args:
+#         obs_seq: Observation sequence array, shape (total_steps, obs_dim)
+#         target_idxs: Indices of target dimensions to extract
+#         horizon: Horizon length for generating base targets (e.g., 150)
+#         terminal_seq: Terminal flags for episode boundaries
+#         near_reference_target: Whether to use nearby episodes as reference
+#         eval_mode: Whether in evaluation mode
+#         fixed_profile_target: Whether to use fixed profile targets
+
+#     Returns:
+#         targets: Array of shape (len(terminal_seq), len(target_idxs))
+#     """
+#     tot_len = len(obs_seq)
+#     target_dim = len(target_idxs)
+
+#     if terminal_seq is None: # a trick to handle the difference between general data and tracking data
+#         terminal_seq = np.zeros((tot_len, ), dtype=bool)
+#         terminal_seq[-1] = True
+
+#     # First generate the base targets using original function logic
+#     base_targets = np.zeros((horizon, obs_seq.shape[1]), dtype=np.float32)
+
+#     # Split data into episodes based on terminal_seq
+#     episodes = _split_into_episodes(obs_seq, terminal_seq)
+
+#     # Generate base targets for the first episode (or reference episode)
+#     for episode_idx, episode_obs in enumerate(episodes):
+#         # Select reference episode
+#         # 与原环境逻辑不太一致需要修改
+#         if near_reference_target and len(episodes) > 1:
+#             available_episodes = [i for i in range(len(episodes)) if i != episode_idx]
+#             if available_episodes:
+#                 if eval_mode:
+#                     ref_episode_idx = available_episodes[0]
+#                 else:
+#                     ref_episode_idx = np.random.choice(available_episodes)
+#                 ref_episode = episodes[ref_episode_idx]
+#             else:
+#                 ref_episode = episode_obs
+#         else:
+#             # Use current episode as reference
+#             ref_episode = episode_obs
+
+#         # Generate base targets (horizon length)
+#         base_targets = _generate_original_trajectory_targets(
+#             ref_episode, target_idxs, horizon, eval_mode, fixed_profile_target
+#         )
+
+#     # Now create new_targets with length tot_len
+#     new_targets = np.zeros((tot_len, target_dim), dtype=np.float32)
+
+#     e_id = 0
+#     for i in range(tot_len):
+#         if terminal_seq[i]:
+#             # Episode ends at position i
+#             if i - e_id < horizon:
+#                 # Within base targets range
+#                 new_targets[i] = base_targets[i - e_id, target_idxs]
+#             else:
+#                 # Beyond base targets range, use last target
+#                 new_targets[i] = base_targets[horizon - 1, target_idxs]
+#             e_id = i + 1
+#         else:
+#             # Within episode
+#             if i - e_id < horizon:
+#                 # Within base targets range
+#                 new_targets[i] = base_targets[i - e_id, target_idxs]
+#             else:
+#                 # Beyond base targets range, use last target
+#                 new_targets[i] = base_targets[horizon - 1, target_idxs]
+
+#     return new_targets
 
 def _split_into_episodes(obs_seq, terminal_seq):
     """Split observation sequence into episodes based on terminal flags."""

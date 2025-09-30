@@ -20,7 +20,9 @@ reference_shot = 161412 # 189268 161412
 #need change
 warmup_steps = 0  # we won't involve the first () steps of each shot in the training dataset
 change_every = 50 # change the tracking target every () time steps
+#save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old" # the processed data will be saved here
 save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old_betan" # need to change, the processed data will be saved here
+#save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
 os.makedirs(save_data_dir, exist_ok=True)
 
 rl_shot_list = list(range(reference_shot - 1000, reference_shot + 1000)) # these shots are used for rl training

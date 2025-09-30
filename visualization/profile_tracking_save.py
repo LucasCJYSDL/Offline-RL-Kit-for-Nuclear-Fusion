@@ -10,39 +10,39 @@ import json
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
-from visualization.controller import Controller
+from visualization.controller_new import Controller
 from visualization.plotter import plot_tracking_quantities, plot_actions
-from  envs.utils.profile_util import reconstruct_profile_from_state
 
 
 #!!! what you need to specify
 def get_args():
-    parser = argparse.ArgumentParser(description="Trajectory evaluation arguments")
+    parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     # basic settings
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
-    parser.add_argument("--cuda_id", type=int, default=3, help="CUDA device ID")
+    parser.add_argument("--cuda_id", type=int, default=4, help="CUDA device ID")
     parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
     # env settings
-    parser.add_argument("--env", type=str, default="fusion_env") 
-    parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
+    parser.add_argument("--env", type=str, default="profile_control") 
+    parser.add_argument("--task", type=str, default="betan_EFIT01", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
-    # parser.add_argument("--actor_path", type=str, default="log/rotation/ppo/seed_1&timestamp_25-0911-120453", help="Path to the actor checkpoint")
-    #parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/prof_tracking_rot_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/601/policy", help="Path to the actor checkpoint")
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
-    # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
-    # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/beta_tracking_env/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="log/betan_EFIT01/ppo/seed_1&timestamp_25-0929-074758", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
+
     return parser.parse_args()
 
+
 def calculate_tracking_metrics(target_array, current_array):
+    """计算跟踪性能指标"""
     target_array = np.array(target_array)
     current_array = np.array(current_array)
+
+    # 基本误差计算
     error = target_array - current_array
     abs_error = np.abs(error)
 
@@ -138,12 +138,49 @@ def save_tracking_results(all_results, log_folder):
         print(f"Average Length: {summary['avg_length']:.1f}")
 
 
+def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
+    """
+    Save shot data to npz file
+    
+    Args:
+        shot_data_dict: Dictionary containing shot data
+        save_folder: Base folder for saving
+        task_name: Task name for folder structure
+        actor_info: Actor information for folder structure
+    """
+    # Create save directory structure
+    data_save_dir = os.path.join(save_folder, "saved_data", task_name, actor_info)
+    os.makedirs(data_save_dir, exist_ok=True)
+    
+    # Save data to npz file
+    npz_file = os.path.join(data_save_dir, "shot_data.npz")
+    np.savez(npz_file, **shot_data_dict)
+    
+    # Save metadata
+    metadata = {
+        'task_name': task_name,
+        'actor_info': actor_info,
+        'num_shots': len([k for k in shot_data_dict.keys() if k.startswith('shot_')]),
+        'shot_ids': [shot_data_dict[k]['shot_id'] for k in shot_data_dict.keys() if k.startswith('shot_')],
+        'save_time': str(np.datetime64('now'))
+    }
+    
+    metadata_file = os.path.join(data_save_dir, "metadata.json")
+    with open(metadata_file, 'w') as f:
+        json.dump(metadata, f, indent=2)
+    
+    print(f"\nShot data saved to: {npz_file}")
+    print(f"Metadata saved to: {metadata_file}")
+    
+    return npz_file, metadata_file
+
+
 def run(args=get_args()) -> None:
     # register an env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=args.il_actor) # these are the data and env used to train the actor
-    args.obs_dim = offline_data['obs_dim']
-    args.action_dim = offline_data['act_dim']
+    args.obs_dim = offline_data['observations'].shape[1]
+    args.action_dim = offline_data['actions'].shape[1]
     args.max_action = 1.0
 
     # set seeds
@@ -156,18 +193,17 @@ def run(args=get_args()) -> None:
 
     # load up the actor
     controller = Controller(args)
+
+    all_results = {}
+    shot_data_dict = {}  # For saving shot data
     
     # rollouts
     shot_list = env.get_eval_shot_list()
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    #log_folder = os.path.join(os.path.dirname(__file__), "results", actor_info[1], actor_info[2], actor_info[3])
-    log_folder = "/home/scratch/jiayuc2/results/old/ppo_betan"
+    log_folder = os.path.join(os.path.dirname(__file__), "results", actor_info[1], actor_info[2], actor_info[3])
     os.makedirs(log_folder, exist_ok=True)
-
-    # init storage for all results
-    all_results = {}
 
     for shot in shot_list:
         obs = env.reset(shot_id=shot)
@@ -175,10 +211,9 @@ def run(args=get_args()) -> None:
 
         time_array = []
         target_quan_array, real_quan_array, cur_quan_array, real_act_array, cur_act_array = [], [], [], [], []
-
         while True:
             action = controller.act(obs)
-            next_obs, actuators, reward, terminal, info = env.step(action,obs)
+            next_obs, reward, terminal, info = env.step(action)
             episode_reward += reward
             episode_length += 1
 
@@ -196,6 +231,14 @@ def run(args=get_args()) -> None:
                 break
 
             obs = next_obs
+            
+        # Convert to numpy arrays
+        target_quan_array = np.array(target_quan_array)
+        cur_quan_array = np.array(cur_quan_array)
+        cur_act_array = np.array(cur_act_array)
+        time_array = np.array(time_array)
+        
+        # 计算量化指标
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
         
         all_results[f'shot_{shot}'] = {
@@ -205,24 +248,29 @@ def run(args=get_args()) -> None:
             'tracking_metrics': tracking_metrics
         }
         
-        # if (args.env == "fusion_env"):
-        #     target_quan_array = reconstruct_profile_from_state(args.task, np.array(target_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
-        #     real_quan_array = reconstruct_profile_from_state(args.task, np.array(real_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
-        #     cur_quan_array = reconstruct_profile_from_state(args.task, np.array(cur_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
-        #     cur_act_array = actuators[:150, sa_processor.action_idxs]
+        # Save shot data for later comparison
+        shot_data_dict[f'shot_{shot}'] = {
+            'shot_id': shot,
+            'cur_quan_array': cur_quan_array,
+            'cur_act_array': cur_act_array,
+            'episode_reward': episode_reward,
+            'episode_length': episode_length
+        }
         
-       
         # make plots
         plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
         if args.plot_actuators:
             plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
-        
+
+        # 打印详细指标
         print_tracking_metrics(shot, tracking_metrics, episode_reward, episode_length)
 
-        # summary
-        print("Shot #{} with return {} and length {}".format(shot, episode_reward, episode_length))
-
+    # Save tracking results
     save_tracking_results(all_results, log_folder)
+    
+    # Save shot data for comparison
+    actor_info_str = "_".join(actor_info[1:])  # Join actor path components
+    save_shot_data(shot_data_dict, os.path.dirname(__file__), args.task, actor_info_str)
 
 if __name__ == "__main__":
     run()

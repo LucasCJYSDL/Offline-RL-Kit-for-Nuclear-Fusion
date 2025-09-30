@@ -35,7 +35,7 @@ def get_args():
     parser.add_argument("--ent-coef", type=float, default=0.0)
     parser.add_argument("--vf-coef", type=float, default=1)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256])
+    parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
     
     # training parameters
     parser.add_argument("--total-timesteps", type=int, default=1000000)
@@ -49,7 +49,7 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="betan_EFIT01") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=4)
+    parser.add_argument("--cuda_id", type=int, default=3)
     return parser.parse_args()
 
 class GymnasiumWrapper(gym.Env):

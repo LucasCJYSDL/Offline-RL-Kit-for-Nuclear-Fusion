@@ -410,41 +410,7 @@ class FusionEnv(NFBaseEnv):  # env for evaluation
     def step(self, cur_action, obs):
          # prepare the input for the dymamics model
         batch_size = cur_action.shape[0] # step with a batch of actions
-        # if self.cur_time >= self.cur_shot_time_limit - 1:
-        #     done = True
-        #     # 计算最终奖励但不更新状态
-        #     current_reward = 0.0
-        #     if self.cur_time >= self.reward_delay:
-        #         # 使用当前可用的数据计算奖励
-        #         if hasattr(self, 'reward') and isinstance(self.reward, np.ndarray):
-        #             current_reward = self.reward[min(self.cur_time, len(self.reward)-1)]
-        #         else:
-        #             current_reward = 0.0
-            
-        #     # 更新时间但不执行其他更新操作
-        #     self.cur_time += 1
-            
-        #     # 安全地获取观察
-        #     try:
-        #         final_obs = self.sa_processor.get_rl_state(
-        #             obs[:self.cur_time-1] if self.cur_time > 1 else obs,
-        #             self.tracking_states[:self.cur_time],
-        #             self.tracking_pre_actions[:self.cur_time],
-        #             self.tracking_next_actuator[:self.cur_time],
-        #             self.targets[:min(self.cur_time + self.k_step_targets_in_obs, self.targets.shape[0])] if self.targets_in_obs else None,
-        #             self.cur_time - 1,
-        #             shot_id=self.ref_shot_id,
-        #             tm_probs=None
-        #         )
-        #     except:
-        #         final_obs = obs  # 如果获取失败，返回当前观察
-            
-        #     return final_obs, current_reward, done, {"time_step": self.cur_time}
-        
-        # cur_action = self.sa_processor.get_step_action(cur_action)
-        # cur_action_pad = torch.FloatTensor(self.tracking_actions[self.cur_time]).unsqueeze(0).repeat(batch_size, 1).to(self.device)
-        # cur_action_pad[:, self.action_idxs] = cur_action
-        # cur_action = cur_action_pad
+       
         self.tracking_pre_actions, self.tracking_next_actuator[1:, :] = self.sa_processor._update_actuators(
                 self.tracking_pre_actions,
                 # Chop off the fist index of the next actuators since that happened
@@ -454,9 +420,6 @@ class FusionEnv(NFBaseEnv):  # env for evaluation
                 self.cur_time,
             )
 
-        # if self.cur_state.shape[0] < batch_size:
-        #     self.cur_state = self.cur_state.repeat(batch_size, 1)
-        #     self.pre_action = self.pre_action.repeat(batch_size, 1)
         net_input = np.hstack([np.expand_dims(self.tracking_states[self.cur_time], axis=0), 
                                np.expand_dims(self.tracking_pre_actions[self.cur_time], axis=0), 
                                np.expand_dims(self.tracking_next_actuator[self.cur_time+1], axis=0)])

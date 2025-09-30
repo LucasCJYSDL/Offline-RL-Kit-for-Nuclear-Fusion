@@ -113,6 +113,7 @@ def load_offline_data(env, tracking_target, is_il):
                     tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
                 else:
                     tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets(target_lows, target_highs, horizon)
+                # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
             else:
                 raise NotImplementedError
 
