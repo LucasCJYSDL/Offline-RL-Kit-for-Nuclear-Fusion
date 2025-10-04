@@ -18,17 +18,22 @@ from visualization.plotter import plot_tracking_quantities, plot_actions
 def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
+    parser.add_argument("--save_base_dir", type=str, 
+                       default="/home/scratch/jiayuc2/temp",
+                       help="Base directory for saving all results")
+    
     # basic settings
-    parser.add_argument("--seed", type=int, default=0, help="Random seed")
+    parser.add_argument("--seed", type=int, default=1, help="Random seed")
     parser.add_argument("--cuda_id", type=int, default=4, help="CUDA device ID")
     parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control") 
-    parser.add_argument("--task", type=str, default="betan_EFIT01", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
-    parser.add_argument("--actor_path", type=str, default="log/betan_EFIT01/ppo/seed_1&timestamp_25-0929-074758", help="Path to the actor checkpoint")
+    # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed1/lr0.0001_steps4096_batch1024_epochs10_gamma0.99_gaelambda0.96_clip0.2_ent0.001_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint") # need to change
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
@@ -202,7 +207,7 @@ def run(args=get_args()) -> None:
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    log_folder = os.path.join(os.path.dirname(__file__), "results", actor_info[1], actor_info[2], actor_info[3])
+    log_folder = os.path.join(args.save_base_dir, "results", actor_info[-1])
     os.makedirs(log_folder, exist_ok=True)
 
     for shot in shot_list:
@@ -270,7 +275,7 @@ def run(args=get_args()) -> None:
     
     # Save shot data for comparison
     actor_info_str = "_".join(actor_info[1:])  # Join actor path components
-    save_shot_data(shot_data_dict, os.path.dirname(__file__), args.task, actor_info_str)
+    save_shot_data(shot_data_dict, args.save_base_dir, args.task, actor_info_str)
 
 if __name__ == "__main__":
     run()

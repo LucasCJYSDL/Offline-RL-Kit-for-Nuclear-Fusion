@@ -5,9 +5,13 @@ A template for a fusion env.
 import random
 import numpy as np
 import torch
+import pickle
 
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
-
+from rl_preparation.state_actuator_spaces import ( 
+    reward_function,
+)
+from rl_preparation.process_raw_data import raw_data_dir
 
 class SA_processor: # used for both training and evaluation
     def __init__(self, offline_data, tracking_data, device):
@@ -18,6 +22,9 @@ class SA_processor: # used for both training and evaluation
 
         self.np_range = ((bounds[1] - bounds[0]) / 2.0)[np.newaxis, :]
         self.np_mid = ((bounds[1] + bounds[0]) / 2.0)[np.newaxis, :]
+
+        with open(raw_data_dir + '/info.pkl', 'rb') as file:
+          self.info = pickle.load(file)
 
         # store the tracking taregts for both the training and evaluation data
         training_data_size = offline_data['tracking_ref'].shape[0] #151
@@ -110,8 +117,25 @@ class SA_processor: # used for both training and evaluation
             #boundary checkout
             targets = self.training_tracking_targets[time_step] # for training
         # this design is flexible - we are using "-mse" as the reaward
+        reward = reward_function.get_reward(next_state[:, self.idx_list],None,self.info,self.idx_list,targets)
+        # return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
+        return reward
+    def get_reward_new(self, next_state, idx, shot_id=None): 
+        """
+        Design of the reward function.
+        The reward function is defined based on the distance between the actual next state and the target next state (i.e., the target specified at the current time step).
+        """
+        if np.isscalar(idx): # for evaluation
+            assert shot_id is not None
+            time_step = np.array([idx])
+            #time_step = np.clip(time_step, 0, len(self.eval_tracking_targets[shot_id]) - 1)
+            targets = self.eval_tracking_targets[shot_id][idx]
+        else:
+            #boundary checkout
+            targets = self.training_tracking_targets[idx] # for training
+        # this design is flexible - we are using "-mse" as the reaward
         return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
-    
+
     def get_plot_quantities(self, shot_id, time_step, state, action):
         """
         According to the shot id and time step, query the quantity target, real quantity, achieved quantity, real actuators, and actuators adopted by the controller.

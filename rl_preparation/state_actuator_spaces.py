@@ -16,57 +16,57 @@ track_signals = [
             #   "rotation_component2", 
             #   "rotation_component3", 
             #   "rotation_component4",
-            #   "dens_component1", 
-            #   "dens_component2", 
-            #   "dens_component3", 
-            #   "dens_component4",
-             "betan_EFIT01"
+              "dens_component1", 
+              "dens_component2", 
+              "dens_component3", 
+              "dens_component4",
+            # "betan_EFIT01"
             ]
 #!!! what you need to specify
 # which states/actuators are actually used
 # betan task
-obs_in_use = ["betan_EFIT01",
-                "temp_component1", 
-                "temp_component2", 
-                "temp_component3", 
-                "temp_component4", 
-                "itemp_component1", 
-                "itemp_component2", 
-                "itemp_component3", 
-                "itemp_component4", 
-                "dens_component1", 
-                "dens_component2", 
-                "dens_component3", 
-                "dens_component4", 
-                "rotation_component1", 
-                "rotation_component2", 
-                "rotation_component3", 
-                "rotation_component4", 
-                "pres_EFIT01_component1", 
-                "pres_EFIT01_component2", 
-                "q_EFIT01_component1", 
-                "q_EFIT01_component2"]
+# obs_in_use = ["betan_EFIT01",
+#                 "temp_component1", 
+#                 "temp_component2", 
+#                 "temp_component3", 
+#                 "temp_component4", 
+#                 "itemp_component1", 
+#                 "itemp_component2", 
+#                 "itemp_component3", 
+#                 "itemp_component4", 
+#                 "dens_component1", 
+#                 "dens_component2", 
+#                 "dens_component3", 
+#                 "dens_component4", 
+#                 "rotation_component1", 
+#                 "rotation_component2", 
+#                 "rotation_component3", 
+#                 "rotation_component4", 
+#                 "pres_EFIT01_component1", 
+#                 "pres_EFIT01_component2", 
+#                 "q_EFIT01_component1", 
+#                 "q_EFIT01_component2"]
 #rotation task
 # obs_in_use = ["rotation_component1", 
 #               "rotation_component2", 
 #               "rotation_component3", 
 #               "rotation_component4"]
 # dens task
-# obs_in_use=[ "dens_component1", 
-#                  "dens_component2", 
-#                  "dens_component3", 
-#                  "dens_component4" ]
+obs_in_use=[ "dens_component1", 
+                 "dens_component2", 
+                 "dens_component3", 
+                 "dens_component4" ]
 
 #need modify
-#acts_in_use= ['pinj','tinj', 'gasA','ech_pwr_total']
+acts_in_use= ['pinj','tinj', 'gasA','ech_pwr_total']
 
-acts_in_use= ['pinj','tinj', 'gasA', 'bt_magnitude','bt_is_positive','ech_pwr_total']
+#acts_in_use= ['pinj','tinj', 'gasA', 'bt_magnitude','bt_is_positive','ech_pwr_total']
 
 action_space = [
     'pinj_velocity',
     'tinj_velocity',
     'gasA_velocity',
-    #'ech_pwr_total_velocity' # when task is betan, comment out it
+    'ech_pwr_total_velocity' # when task is betan, comment out it
     ]
 
 #need modify
@@ -77,16 +77,16 @@ action_space = [
 #     PTerm(signal_name="rotation_component4", target_idx=0),
 # ]
 
-# computed_obs_in_use = [
-#     PTerm(signal_name="dens_component1", target_idx=0),
-#     PTerm(signal_name="dens_component2", target_idx=0),
-#     PTerm(signal_name="dens_component3", target_idx=0),
-#     PTerm(signal_name="dens_component4", target_idx=0),
-# ]
-
 computed_obs_in_use = [
-    PTerm(signal_name="betan_EFIT01", target_idx=0),
+    PTerm(signal_name="dens_component1", target_idx=0),
+    PTerm(signal_name="dens_component2", target_idx=0),
+    PTerm(signal_name="dens_component3", target_idx=0),
+    PTerm(signal_name="dens_component4", target_idx=0),
 ]
+
+# computed_obs_in_use = [
+#     PTerm(signal_name="betan_EFIT01", target_idx=0),
+# ]
 
 # do not need modify
 beams = ['30L', '30R', '150L', '150R', '210L', '210R', '330L', '330R']
@@ -110,10 +110,10 @@ min_duty_cycle = {
 
 targets_in_obs = True
 # need to modify
-# k_step_targets_in_obs = 10 
-k_step_targets_in_obs = 1   # default 1 which is current step only. when task is betan, change to 1
-#discrete_k_target_idx_in_obs = [0,9]  # None.  When task is betan, change to None
-discrete_k_target_idx_in_obs = None
+k_step_targets_in_obs = 10 
+#k_step_targets_in_obs = 1   # default 1 which is current step only. when task is betan, change to 1
+discrete_k_target_idx_in_obs = [0,9]  # None.  When task is betan, change to None
+#discrete_k_target_idx_in_obs = None
 add_tm_probs_to_obs = False
 
 beam_bounder = D3dTotalPowerTorqueBounding(
@@ -130,18 +130,18 @@ actuator_bounder = CompositeActuatorBounder(bounders=[beam_bounder])
 
 # need to modify 
 # rotation and dens task
-# reward_function = ProfileTrackingReward(
-#         unnormalize=False,
-#         profile_name=["rotation"],
-#         square_costs=True,
-#         track_signals=track_signals,
-#     )
+reward_function = ProfileTrackingReward(
+        unnormalize=False,
+        profile_name=["rotation"],
+        square_costs=True,
+        track_signals=track_signals,
+    )
 
 # betan task
-reward_function = TrackingReward(
-    track_signals=track_signals,
-    track_coefficients = [1],
-)
+# reward_function = TrackingReward(
+#     track_signals=track_signals,
+#     track_coefficients = [1],
+# )
 
 horizon = 150
 

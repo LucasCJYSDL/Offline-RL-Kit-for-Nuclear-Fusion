@@ -7,7 +7,7 @@ import pickle
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from rl_preparation.state_actuator_spaces_new import ( 
+from rl_preparation.state_actuator_spaces import ( 
     state_names_to_idxs, 
     actuator_names_to_idxs, 
     get_target_indices, 
@@ -103,17 +103,17 @@ def load_offline_data(env, tracking_target, is_il):
             elif env == "profile_control": # TODO: use the first option (commented for now)
                 #change evaluation targets
                 if tracking_target in ['dens', 'rotation']:
-                    tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets_new(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
+                    tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
                 else:
-                    tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets_new(target_lows, target_highs, tracking_data[int(shot_id)]['tracking_states'])                
+                    tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets(target_lows, target_highs, tracking_data[int(shot_id)]['tracking_states'])                
                 # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(ref_shot, offline_data['index_list'], None, change_every)
-                #tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
+                # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
             elif env == "fusion_env":
                 if tracking_target in ['dens', 'rotation']:
                     tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
                 else:
                     tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets(target_lows, target_highs, horizon)
-                # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
+                #tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
             else:
                 raise NotImplementedError
 
@@ -121,12 +121,12 @@ def load_offline_data(env, tracking_target, is_il):
     if env == "base": # TODO: decouple the target setting menthod with the env type
         offline_data['tracking_ref'] = fixed_ref_shot_targets(ref_shot_next, offline_data['index_list'], offline_data['terminals'])
     elif env == "profile_control":
-        #change tariningtargets
+        # change tariningtargets
         if tracking_target in ['dens', 'rotation']:
             offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'])
         else:
             offline_data['tracking_ref'] = uniform_targets_new(target_lows, target_highs, offline_data['observations'])
-            #offline_data['tracking_ref'] = step_function_targets(offline_data['observations'], offline_data['index_list'], offline_data['terminals'], change_every)
+        # offline_data['tracking_ref'] = step_function_targets(offline_data['observations'], offline_data['index_list'], offline_data['terminals'], change_every)
         # TODO: usig 'next_observations'
     elif env == "fusion_env":
         if tracking_target in ['dens', 'rotation']:
@@ -203,7 +203,8 @@ def get_rl_data_envs(env_id, task, device, is_il=False):
     # collect the data for rl training: (s, a, r, s', d), where d denotes the termination signal
     # For fusion_env, the rewards and actions are processed in the env step function.
     if(env_id != "fusion_env"):
-        offline_data['rewards'] = sa_processor.get_reward(offline_data['next_observations'], offline_data['time_step'])
+        #offline_data['rewards'] = sa_processor.get_reward(offline_data['next_observations'], offline_data['time_step'])
+        offline_data['rewards'] = sa_processor.get_reward_new(offline_data['next_observations'], idx=np.array(np.arange(0, offline_data['observations'].shape[0])))
         offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
         offline_data['observations'] = sa_processor.get_rl_state(offline_data['observations'], batch_idx=np.arange(0, offline_data['observations'].shape[0]))
         offline_data['next_observations'] = sa_processor.get_rl_state(offline_data['next_observations'], batch_idx=np.arange(1, offline_data['observations'].shape[0]+1))
@@ -234,5 +235,5 @@ if __name__ == "__main__":
     # for k, v in tracking_data[reference_shot].items():
     #     print(k, v.shape)
     import torch
-    offline_data, sa_processor, env, training_model_dir = get_rl_data_envs("base", "betan_EFIT01", torch.device("cuda"))
+    offline_data, sa_processor, env, training_model_dir = get_rl_data_envs("profile_control", "rotation", torch.device("cuda"))
     print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['rewards'].shape)

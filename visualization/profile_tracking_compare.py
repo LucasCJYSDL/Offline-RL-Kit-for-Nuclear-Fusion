@@ -29,11 +29,11 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="fusion_env") 
-    parser.add_argument("--task", type=str, default="betan", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # old PPO controller settings
     parser.add_argument("--old_actor_path", type=str, 
-                       default="/home/scratch/jiayuc2/prof_tracking_rot_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", 
+                       default="/home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", 
                        help="Path to the old actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
@@ -42,11 +42,11 @@ def get_args():
     
     # new PPO data settings
     parser.add_argument("--new_ppo_data_path", type=str,
-                       default="saved_data/betan_EFIT01/ppo_seed_1_timestamp_25-0921-120157/shot_data.npz",
+                       default="saved_data/dens/dens_ppo_seed_1&timestamp_25-0929-074550/shot_data.npz",
                        help="Path to the saved new PPO data")
 
     # comparison settings
-    parser.add_argument("--comparison_name", type=str, default="new target",
+    parser.add_argument("--comparison_name", type=str, default="old target",
                        help="Custom name for comparison (optional)")
 
     return parser.parse_args()

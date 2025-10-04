@@ -16,6 +16,7 @@ from offlinerlkit.dynamics import EnsembleDynamics
 from offlinerlkit.policy.model_free.ppo import PPOPolicy, ConvertAndSaveCallback
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
+from offlinerlkit.callbacks import TensorBoardLoggingCallback, FusionSpecificCallback, TrainingProgressCallback
 
 
 def get_args():
@@ -24,8 +25,13 @@ def get_args():
     # 
     parser.add_argument("--algo-name", type=str, default="ppo")
     
+
+    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off", 
+                       help="Specify output directory path, use default path if not specified")
+    # parser.add_argument("--output-dir", type=str, default=None, 
+    #                     help="Specify output directory path, use default path if not specified")
     # PPO hyperparameters
-    parser.add_argument("--learning-rate", type=float, default=1e-4)
+    parser.add_argument("--learning-rate", type=float, default=1e-4)#modification
     parser.add_argument("--n-steps", type=int, default=2048 )
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--n-epochs", type=int, default=10 )
@@ -38,18 +44,18 @@ def get_args():
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
     
     # training parameters
-    parser.add_argument("--total-timesteps", type=int, default=1000000)
-    parser.add_argument("--eval-freq", type=int, default=100000)
-    parser.add_argument("--eval-episodes", type=int, default=5)
-    parser.add_argument("--save-freq", type=int, default=100000)
+    parser.add_argument("--total-timesteps", type=int, default=5000)#modification
+    parser.add_argument("--eval-freq", type=int, default=10000)#modification
+    parser.add_argument("--eval-episodes", type=int, default=0)
+    parser.add_argument("--save-freq", type=int, default=10000)#modification
     
     # environment parameter
-    parser.add_argument("--max-episode-length", type=int, default=200)
+    parser.add_argument("--max-episode-length", type=int, default=150) #200
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="betan_EFIT01") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="dens") # betan_EFIT01  modification
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=3)
+    parser.add_argument("--cuda_id", type=int, default=5)
     return parser.parse_args()
 
 class GymnasiumWrapper(gym.Env):
@@ -224,7 +230,7 @@ def train(args=get_args()):
     
     # 创建动力学包装器
     termination_fn = env.is_done
-    reward_fn = sa_processor.get_reward
+    reward_fn = sa_processor.get_reward_new
     dynamics = EnsembleDynamics(
         dynamics_model,
         termination_fn,
@@ -242,6 +248,32 @@ def train(args=get_args()):
 
     print(f"调整n_steps从{args.n_steps}到{adjusted_n_steps}以适应总步数{args.total_timesteps}")
 
+    if args.output_dir is not None:
+        base_dir = args.output_dir
+        param_signature = (f"lr{args.learning_rate}_"
+                  f"steps{args.n_steps}_"
+                  f"batch{args.batch_size}_"
+                  f"epochs{args.n_epochs}_"
+                  f"gamma{args.gamma}_"
+                  f"gaelambda{args.gae_lambda}_"
+                  f"clip{args.clip_range}_"
+                  f"ent{args.ent_coef}_"
+                  f"vf{args.vf_coef}_"
+                  f"maxgrad{args.max_grad_norm}_"
+                  f"timesteps{args.total_timesteps}_"
+                  f"hidden{'x'.join(map(str, args.hidden_dims))}")
+        output_dir = os.path.join(base_dir, f"{args.task}_{args.algo_name}_seed{args.seed}",param_signature)
+        os.makedirs(output_dir, exist_ok=True)
+        
+    else:
+        output_dir = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
+    
+    # 设置TensorBoard日志目录
+    tb_log_dir = os.path.join(output_dir, "tensorboard")
+    os.makedirs(tb_log_dir, exist_ok=True)
+    
+    
+    # 创建PPO策略 - 添加tensorboard_log参数
     policy = PPOPolicy(
         dynamics=dynamics,
         state_idxs=offline_data['state_idxs'],
@@ -259,14 +291,11 @@ def train(args=get_args()):
         ent_coef=args.ent_coef,
         vf_coef=args.vf_coef,
         max_grad_norm=args.max_grad_norm,
-        hidden_dims=args.hidden_dims  # 网络隐藏层维度
+        hidden_dims=args.hidden_dims,
+        tensorboard_log=tb_log_dir  # 启用TensorBoard
     )
 
-    # 设置环境的最大episode长度
     policy.env.max_episode_length = args.max_episode_length
-    
-    # 创建日志目录
-    output_dir = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
 
     # 创建logger配置
     output_config = {
@@ -284,7 +313,6 @@ def train(args=get_args()):
     print(f"保存频率: {args.save_freq}")
 
     # 创建评估环境（使用真实环境base_env或profile_control_env）
-    # 根据修改PPO方案.md的要求，评估环境必须是base_env或profile_control_env
     print("正在创建评估环境...")
     eval_env_raw = env  # 使用真实环境进行评估
     eval_env = GymnasiumWrapper(eval_env_raw)
@@ -293,10 +321,28 @@ def train(args=get_args()):
     from stable_baselines3.common.monitor import Monitor
     eval_env = Monitor(eval_env)
 
-    # 创建callbacks
     callbacks = []
 
-    # 评估回调 - 使用真实环境进行评估
+   
+    tb_callback = TensorBoardLoggingCallback(verbose=1, log_freq=1000)
+    callbacks.append(tb_callback)
+    
+    fusion_callback = FusionSpecificCallback(
+        eval_env=eval_env,
+        verbose=1,
+        eval_freq=args.eval_freq,
+        n_eval_episodes=5
+    )
+    callbacks.append(fusion_callback)
+    
+    progress_callback = TrainingProgressCallback(
+        save_path=output_dir,
+        verbose=1,
+        log_freq=5000
+    )
+    callbacks.append(progress_callback)
+
+    # 评估回调
     if args.eval_freq > 0:
         eval_callback = EvalCallback(
             eval_env,
@@ -311,7 +357,7 @@ def train(args=get_args()):
         callbacks.append(eval_callback)
         print(f"评估回调已配置: 每{args.eval_freq}步评估{args.eval_episodes}个episodes")
 
-    # 检查点保存回调 - 保存SB3原始格式
+    # 检查点保存回调
     if args.save_freq > 0:
         checkpoint_callback = CheckpointCallback(
             save_freq=args.save_freq,
@@ -322,7 +368,7 @@ def train(args=get_args()):
         callbacks.append(checkpoint_callback)
         print(f"检查点回调已配置: 每{args.save_freq}步保存模型")
 
-    # 权重转换和保存回调 - 保存兼容格式
+    # 权重转换和保存回调
     convert_save_callback = ConvertAndSaveCallback(
         save_path=os.path.join(output_dir, "checkpoint"),
         save_freq=args.save_freq,
@@ -338,13 +384,18 @@ def train(args=get_args()):
 
     # 训练循环
     start_time = time.time()
-    print("开始PPO训练...")
 
-    policy.model.learn(
-        total_timesteps=args.total_timesteps,
-        callback=callback_list,
-        progress_bar=True
-    )
+    try:
+        policy.model.learn(
+            total_timesteps=args.total_timesteps,
+            callback=callback_list,
+            progress_bar=True
+        )
+        print("训练成功完成")
+    except Exception as e:
+        print(f"训练过程中出错: {e}")
+        import traceback
+        traceback.print_exc()
 
     # 训练完成
     total_time = time.time() - start_time

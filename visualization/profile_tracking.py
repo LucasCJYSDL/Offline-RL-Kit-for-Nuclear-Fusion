@@ -205,12 +205,6 @@ def run(args=get_args()) -> None:
             'tracking_metrics': tracking_metrics
         }
         
-        # if (args.env == "fusion_env"):
-        #     target_quan_array = reconstruct_profile_from_state(args.task, np.array(target_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
-        #     real_quan_array = reconstruct_profile_from_state(args.task, np.array(real_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
-        #     cur_quan_array = reconstruct_profile_from_state(args.task, np.array(cur_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
-        #     cur_act_array = actuators[:150, sa_processor.action_idxs]
-        
        
         # make plots
         plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)

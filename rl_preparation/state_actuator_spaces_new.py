@@ -16,11 +16,11 @@ track_signals = [
             #   "rotation_component2", 
             #   "rotation_component3", 
             #   "rotation_component4",
-            #   "dens_component1", 
-            #   "dens_component2", 
-            #   "dens_component3", 
-            #   "dens_component4",
-              "betan_EFIT01"
+              "dens_component1", 
+              "dens_component2", 
+              "dens_component3", 
+              "dens_component4",
+            #  "betan_EFIT01"
               ]
 #!!! what you need to specify
 # which states/actuators are actually used
@@ -50,11 +50,11 @@ track_signals = [
 #               "rotation_component2", 
 #               "rotation_component3", 
 #               "rotation_component4"]
-obs_in_use =["betan_EFIT01"]
-# obs_in_use=[ "dens_component1", 
-#                  "dens_component2", 
-#                  "dens_component3", 
-#                  "dens_component4" ]
+#obs_in_use =["betan_EFIT01"]
+obs_in_use=[ "dens_component1", 
+                 "dens_component2", 
+                 "dens_component3", 
+                 "dens_component4" ]
 # obs_in_use = [
 #     'betan_EFIT01',
 #     "temp_component1",
@@ -89,6 +89,7 @@ action_space = [
     'gasA_velocity',
     'ech_pwr_total_velocity'
     ]
+
 
 computed_obs_in_use = [
     PTerm(signal_name="rotation_component1", target_idx=0),

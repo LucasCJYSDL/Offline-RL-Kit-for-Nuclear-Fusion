@@ -47,7 +47,10 @@ def reconstruct_profile_from_state(
                             [f'{profile_name}_component{cnum}']['median'])
         iqrs = np.array(iqrs).reshape(1, -1)
         medians = np.array(medians).reshape(1, -1)
-        encode = states[:, prof_idxs] * iqrs + medians
+        if(states.shape[1]==len(prof_idxs)):
+           encode = states * iqrs + medians
+        else:
+           encode = states[:, prof_idxs] * iqrs + medians
     else:
         encode = states[:, prof_idxs]
     profiles = np.dot(encode, info['pca_components'][profile_name]['components']) \

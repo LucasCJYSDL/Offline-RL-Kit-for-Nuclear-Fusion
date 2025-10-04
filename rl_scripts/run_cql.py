@@ -18,7 +18,7 @@ from rl_preparation.get_rl_data_envs import get_rl_data_envs
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo-name", type=str, default="cql")
-    parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256, 256])
+    parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256,256])#[256,256,256]
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -37,16 +37,16 @@ def get_args():
     parser.add_argument("--cql-alpha-lr", type=float, default=3e-4)
     parser.add_argument("--num-repeat-actions", type=int, default=10)
     
-    parser.add_argument("--epoch", type=int, default=1000)
+    parser.add_argument("--epoch", type=int, default=100)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=2560)
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="betan_EFIT01") #?
+    parser.add_argument("--task", type=str, default="dens") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=1)
+    parser.add_argument("--cuda_id", type=int, default=2)
 
     return parser.parse_args()
 

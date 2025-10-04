@@ -12,7 +12,7 @@ import pickle
 import h5py
 from tqdm import tqdm
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from rl_preparation.state_actuator_spaces_new import action_space
+from rl_preparation.state_actuator_spaces import action_space
 
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
 

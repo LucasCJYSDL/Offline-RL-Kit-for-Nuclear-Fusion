@@ -28,10 +28,10 @@ def get_args():
     parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
-    parser.add_argument("--actor_path", type=str, default="log/dens/ppo/seed_1&timestamp_25-0929-074550", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="log/dens/cql/seed_1&timestamp_25-1003-124827", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256, 256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
 
     return parser.parse_args()
@@ -207,7 +207,7 @@ def run(args=get_args()) -> None:
         target_quan_array = np.array(target_quan_array)
         cur_quan_array = np.array(cur_quan_array)
         time_array = np.array(time_array)
-        print(target_quan_array)
+        #print(target_quan_array)
         
         # 计算量化指标
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)

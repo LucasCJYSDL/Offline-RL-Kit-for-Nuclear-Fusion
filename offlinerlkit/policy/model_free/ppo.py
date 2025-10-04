@@ -12,72 +12,11 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.callbacks import BaseCallback
-
+import time
 from offlinerlkit.policy.base_policy import BasePolicy
 
 
-class GymnasiumWrapper(gym.Env):
-    """
-    将自定义环境包装为Gymnasium兼容的环境
-    """
-    def __init__(self, custom_env):
-        super().__init__()
-        self.env = custom_env
 
-        # 设置观测和动作空间
-        if hasattr(custom_env, 'observation_space'):
-            self.observation_space = custom_env.observation_space
-        else:
-            # 从环境推断观测空间
-            obs = custom_env.reset()
-            if isinstance(obs, tuple):
-                obs = obs[0]  # 处理新版gym返回(obs, info)的情况
-            obs_shape = obs.shape if hasattr(obs, 'shape') else (len(obs),)
-            self.observation_space = gym.spaces.Box(
-                low=-np.inf, high=np.inf, shape=obs_shape, dtype=np.float32
-            )
-
-        if hasattr(custom_env, 'action_space'):
-            self.action_space = custom_env.action_space
-        else:
-            # 假设连续动作空间
-            action_dim = 4  # 根据你的设置
-            self.action_space = gym.spaces.Box(
-                low=-1.0, high=1.0, shape=(action_dim,), dtype=np.float32
-            )
-
-    def reset(self, seed=None, options=None):
-        """重置环境"""
-        if hasattr(self.env, 'seed') and seed is not None:
-            self.env.seed(seed)
-
-        obs = self.env.reset()
-        if isinstance(obs, tuple):
-            return obs  # 已经是(obs, info)格式
-        else:
-            return obs, {}  # 转换为新格式
-
-    def step(self, action):
-        """执行动作"""
-        result = self.env.step(action)
-        if len(result) == 4:
-            # 旧格式: (obs, reward, done, info)
-            obs, reward, done, info = result
-            return obs, reward, done, False, info  # 添加truncated
-        else:
-            # 新格式: (obs, reward, terminated, truncated, info)
-            return result
-
-    def render(self, mode='human'):
-        """渲染环境"""
-        if hasattr(self.env, 'render'):
-            return self.env.render()
-        return None
-
-    def close(self):
-        """关闭环境"""
-        if hasattr(self.env, 'close'):
-            self.env.close()
 
 
 def convert_sb3_to_offlinerl_format(sb3_state_dict: Dict[str, torch.Tensor], hidden_dims: list) -> Dict[str, torch.Tensor]:
@@ -238,7 +177,7 @@ class FusionPPOEnv(gym.Env):
         super().reset(seed=seed)
         
         # 从离线数据中随机选择初始状态  完全随机
-        idx = np.random.randint(0, self.offline_data['observations'].shape[0])
+        idx = np.random.randint(0, self.offline_data['observations'].shape[0]-1)
         # 使用完整状态数据作为动力学模型的输入
         self.current_full_state = self.offline_data['full_observations'][idx].copy()
         self.previous_action = self.offline_data['pre_actions'][idx].copy()
@@ -257,6 +196,9 @@ class FusionPPOEnv(gym.Env):
     def step(self, action):
         """执行一步动作"""
         # 确保动作在正确范围内
+        # print("action")
+        # print(action)
+        action=action
         action = np.clip(action, -1.0, 1.0)
         
         # 转换动作格式
@@ -283,7 +225,8 @@ class FusionPPOEnv(gym.Env):
             time_steps=np.array([self.time_step]),
             time_terminals=np.array([current_time_terminals]),
             state_idxs=self.state_idxs,
-            batch_idxs=np.array([valid_time_step])
+            #batch_idxs=np.array([valid_time_step])
+            batch_idxs=np.array([self.current_global_idx])
         )
 
         # 从info中获取完整的下一状态
@@ -291,12 +234,13 @@ class FusionPPOEnv(gym.Env):
         self.previous_action = full_action
         self.time_step += 1
         self.episode_length += 1
-
+        self.current_global_idx +=1
         # 获取下一观测 - 从完整状态中提取选定的状态维度，然后通过sa_processor处理
         selected_state = self.current_full_state[self.state_idxs]
         next_obs = self.sa_processor.get_rl_state(
             selected_state.reshape(1, -1),
-            np.array([self.time_step])
+            np.array([self.current_global_idx])
+            #np.array([self.time_step])
         )[0]
         
         # 检查是否结束
@@ -386,6 +330,7 @@ class PPOPolicy(BasePolicy):
         ent_coef: float = 0.0,
         vf_coef: float = 0.5,
         max_grad_norm: float = 0.5,
+        tensorboard_log: str = None,  # 添加这个参数
         **kwargs
     ):
         super().__init__()
@@ -396,6 +341,7 @@ class PPOPolicy(BasePolicy):
         self.sa_processor = sa_processor
         self.offline_data = offline_data
         self.device = device
+        self.tensorboard_log = tensorboard_log  
 
         # 存储网络配置用于权重转换
         self.hidden_dims = kwargs.get('hidden_dims', [256, 256])
@@ -429,7 +375,7 @@ class PPOPolicy(BasePolicy):
         global _GLOBAL_HIDDEN_DIMS
         _GLOBAL_HIDDEN_DIMS = self.hidden_dims
 
-        # 创建PPO模型
+        # 创建PPO模型 - 添加tensorboard_log参数
         self.model = PPO(
             policy=FusionPPOPolicy,
             env=self.vec_env,
@@ -445,6 +391,7 @@ class PPOPolicy(BasePolicy):
             max_grad_norm=max_grad_norm,
             device=device,
             policy_kwargs=policy_kwargs,
+            tensorboard_log=tensorboard_log,  # 启用TensorBoard日志
             verbose=1
         )
         
@@ -525,80 +472,8 @@ class PPOPolicy(BasePolicy):
             "eval/episode_length": episode_lengths
         }
 
-    def rollout(self, init_samples) -> Tuple[Dict[str, np.ndarray], Dict]:
-        """
-        使用当前策略进行rollout，与其他算法保持接口一致
-        """
-        num_transitions = 0
-        rewards_arr = np.array([])
-        rollout_transitions = defaultdict(list)
 
-        rollout_length = init_samples["full_observations"].shape[1]
-        batch_size = init_samples["full_observations"].shape[0]
 
-        full_observations = init_samples["full_observations"][:, 0]
-        pre_actions = init_samples["pre_actions"][:, 0]
-        time_steps = init_samples["time_steps"][:, 0]
-        time_terminals = init_samples["terminals"][:, 0]
 
-        self.dynamics.reset(init_samples["hidden_states"])
 
-        for t in range(rollout_length):
-            # 获取观测
-            observations = full_observations[:, self.state_idxs]
-            observations = self.sa_processor.get_rl_state(
-                observations, init_samples["batch_idx_list"][t]
-            )
 
-            # 选择动作
-            actions = []
-            for obs in observations:
-                action = self.select_action(obs, deterministic=True)
-                actions.append(action)
-            actions = np.array(actions)
-
-            # 转换动作格式
-            step_actions = self.sa_processor.get_step_action(actions)
-            full_actions = init_samples["full_actions"][:, t].copy()
-            full_actions[:, self.action_idxs] = step_actions
-
-            # 执行动作
-            next_observations, rewards, terminals, info = self.dynamics.step(
-                full_observations, pre_actions, full_actions,
-                time_steps, time_terminals, self.state_idxs,
-                init_samples["batch_idx_list"][t]
-            )
-
-            # 存储转换
-            rollout_transitions["observations"].append(observations)
-            rollout_transitions["actions"].append(actions)
-            rollout_transitions["next_observations"].append(
-                self.sa_processor.get_rl_state(
-                    next_observations, init_samples["batch_idx_list"][t+1]
-                )
-            )
-            rollout_transitions["rewards"].append(rewards)
-            rollout_transitions["terminals"].append(terminals)
-
-            # 更新状态
-            full_observations = next_observations
-            pre_actions = full_actions
-            time_steps += 1
-            num_transitions += batch_size
-            rewards_arr = np.append(rewards_arr, rewards)
-
-            # 检查终止条件
-            if np.any(terminals):
-                break
-
-        # 转换为numpy数组
-        for key in rollout_transitions:
-            rollout_transitions[key] = np.array(rollout_transitions[key])
-
-        rollout_info = {
-            "num_transitions": num_transitions,
-            "reward_mean": rewards_arr.mean(),
-            "reward_std": rewards_arr.std(),
-        }
-
-        return rollout_transitions, rollout_info
