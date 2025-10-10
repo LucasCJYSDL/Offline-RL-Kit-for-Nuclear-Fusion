@@ -19,7 +19,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation arguments")
 
     # basic settings
-    parser.add_argument("--seed", type=int, default=0, help="Random seed")
+    parser.add_argument("--seed", type=int, default=10, help="Random seed")
     parser.add_argument("--cuda_id", type=int, default=4, help="CUDA device ID")
     parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
@@ -28,12 +28,14 @@ def get_args():
     parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
-    parser.add_argument("--actor_path", type=str, default="log/dens/cql/seed_1&timestamp_25-1003-124827", help="Path to the actor checkpoint")
+    #parser.add_argument("--actor_path", type=str, default="log/dens/cql/seed_1&timestamp_25-1004-113803", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/dens_reset/dens_ppo_seed1/lr0.0002_steps2048_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_timesteps1003000_hidden250x250", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256, 256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
 
+    parser.add_argument("--save_dir_name", type=str, default="ppo_0.5_256_1_new_reset", help="保存结果的子文件夹名称（位于 visualization/results/ppo/ 下）")
     return parser.parse_args()
 
 
@@ -173,8 +175,12 @@ def run(args=get_args()) -> None:
     shot_list = env.get_eval_shot_list()
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
-    actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    log_folder = os.path.join(os.path.dirname(__file__), "results", actor_info[1], actor_info[2], actor_info[3])
+    # actor_info = args.actor_path.split('/') # create a folder to store the visualization results
+    # log_folder = os.path.join(os.path.dirname(__file__), "results", actor_info[1], actor_info[2], actor_info[3])
+        
+    base_results_dir = os.path.join(os.path.dirname(__file__), "results", "ppo")
+    log_folder = os.path.join(base_results_dir, args.save_dir_name)
+    
     os.makedirs(log_folder, exist_ok=True)
 
     for shot in shot_list:

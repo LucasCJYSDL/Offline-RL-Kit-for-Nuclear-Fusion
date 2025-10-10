@@ -26,34 +26,37 @@ def get_args():
     parser.add_argument("--algo-name", type=str, default="ppo")
     
 
-    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off", 
+    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/dens_reset_old_reward", 
                        help="Specify output directory path, use default path if not specified")
     # parser.add_argument("--output-dir", type=str, default=None, 
     #                     help="Specify output directory path, use default path if not specified")
     # PPO hyperparameters
-    parser.add_argument("--learning-rate", type=float, default=1e-4)#modification
-    parser.add_argument("--n-steps", type=int, default=2048 )
+    parser.add_argument("--learning-rate", type=float, default=2e-4 )
+    parser.add_argument("--n-steps", type=int, default=2048)
     parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument("--n-epochs", type=int, default=10 )
+    parser.add_argument("--n-epochs", type=int, default=20 )
     parser.add_argument("--gamma", type=float, default=0.99 )
     parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--clip-range", type=float, default=0.2)
+    parser.add_argument("--clip-range", type=float, default=0.15)
     parser.add_argument("--ent-coef", type=float, default=0.0)
     parser.add_argument("--vf-coef", type=float, default=1)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
     
     # training parameters
-    parser.add_argument("--total-timesteps", type=int, default=5000)#modification
-    parser.add_argument("--eval-freq", type=int, default=10000)#modification
-    parser.add_argument("--eval-episodes", type=int, default=0)
-    parser.add_argument("--save-freq", type=int, default=10000)#modification
+    parser.add_argument("--total-timesteps", type=int, default=750000)
+    parser.add_argument("--eval-freq", type=int, default=10000)
+    parser.add_argument("--eval-episodes", type=int, default=5)
+    parser.add_argument("--save-freq", type=int, default=10000)
     
     # environment parameter
     parser.add_argument("--max-episode-length", type=int, default=150) #200
+    parser.add_argument("--warm_start_amount", type=int, default=4)
+    parser.add_argument("--min_start_idx", type=int, default=4)
+    parser.add_argument("--max_start_idx",  type=int, default=20)
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="dens") # betan_EFIT01  modification
+    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=5)
     return parser.parse_args()
@@ -268,12 +271,10 @@ def train(args=get_args()):
     else:
         output_dir = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
     
-    # 设置TensorBoard日志目录
     tb_log_dir = os.path.join(output_dir, "tensorboard")
     os.makedirs(tb_log_dir, exist_ok=True)
     
     
-    # 创建PPO策略 - 添加tensorboard_log参数
     policy = PPOPolicy(
         dynamics=dynamics,
         state_idxs=offline_data['state_idxs'],
@@ -292,7 +293,7 @@ def train(args=get_args()):
         vf_coef=args.vf_coef,
         max_grad_norm=args.max_grad_norm,
         hidden_dims=args.hidden_dims,
-        tensorboard_log=tb_log_dir  # 启用TensorBoard
+        tensorboard_log=tb_log_dir  
     )
 
     policy.env.max_episode_length = args.max_episode_length

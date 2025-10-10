@@ -183,9 +183,9 @@ def get_raw_data(offline_data_dir, action_bound_file, state_bound_file, shot_lis
 
 def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, tracking_data_path, rl_shot_list, il_shot_list, tracking_shot_list, device, code_base):
     rl_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
-                'terminals': [], 'time_step': [], 'hidden_states': []}
+                'terminals': [], 'time_step': [], 'hidden_states': [], 'traj_start_indices': []}
     il_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
-                'terminals': [], 'time_step': []}
+                'terminals': [], 'time_step': [], 'traj_start_indices': []}
     tracking_data = {}
     
     # load the rnn model ensemble used for training
@@ -224,6 +224,9 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
                 rl_data['next_observations'].append(next_state.copy())
                 rl_data['terminals'].append(offline_dst['terminals'][t])
                 rl_data['time_step'].append(offline_dst['time_step'][t])
+                current_idx = len(rl_data['observations']) - 1
+                if offline_dst['time_step'][t] < 10:   
+                    rl_data['traj_start_indices'].append(current_idx)
             
             if cur_shot in il_shot_list:
                 il_data['observations'].append(cur_state.copy())
@@ -232,6 +235,9 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
                 il_data['next_observations'].append(next_state.copy())
                 il_data['terminals'].append(offline_dst['terminals'][t])
                 il_data['time_step'].append(offline_dst['time_step'][t])
+                current_idx = len(rl_data['observations']) - 1
+                if offline_dst['time_step'][t] < 10:   
+                    il_data['traj_start_indices'].append(current_idx)
 
             # collect tracking data
             if cur_shot in tracking_data and not terminated:

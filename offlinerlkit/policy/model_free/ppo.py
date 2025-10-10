@@ -176,8 +176,11 @@ class FusionPPOEnv(gym.Env):
         """重置环境"""
         super().reset(seed=seed)
         
-        # 从离线数据中随机选择初始状态  完全随机
-        idx = np.random.randint(0, self.offline_data['observations'].shape[0]-1)
+        # # 从离线数据中随机选择初始状态  完全随机
+        # idx = np.random.randint(0, self.offline_data['observations'].shape[0]-1)
+        traj_idx = np.random.randint(0, len(self.offline_data['traj_start_indices']))
+        start_idx = self.offline_data['traj_start_indices'][traj_idx]
+        idx = start_idx
         # 使用完整状态数据作为动力学模型的输入
         self.current_full_state = self.offline_data['full_observations'][idx].copy()
         self.previous_action = self.offline_data['pre_actions'][idx].copy()
@@ -187,6 +190,7 @@ class FusionPPOEnv(gym.Env):
         self.current_global_idx = idx
         # 重置动力学模型
         self.dynamics.reset()
+
 
         # 获取观测 - 直接使用已经处理过的观测数据
         obs = self.offline_data['observations'][idx].copy()
@@ -375,7 +379,7 @@ class PPOPolicy(BasePolicy):
         global _GLOBAL_HIDDEN_DIMS
         _GLOBAL_HIDDEN_DIMS = self.hidden_dims
 
-        # 创建PPO模型 - 添加tensorboard_log参数
+       
         self.model = PPO(
             policy=FusionPPOPolicy,
             env=self.vec_env,
@@ -391,7 +395,7 @@ class PPOPolicy(BasePolicy):
             max_grad_norm=max_grad_norm,
             device=device,
             policy_kwargs=policy_kwargs,
-            tensorboard_log=tensorboard_log,  # 启用TensorBoard日志
+            tensorboard_log=tensorboard_log,  
             verbose=1
         )
         

@@ -26,12 +26,12 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="fusion_env") 
-    parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="log/rotation/ppo/seed_1&timestamp_25-0911-120453", help="Path to the actor checkpoint")
-    #parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/prof_tracking_rot_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/601/policy", help="Path to the actor checkpoint")
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/prof_tracking_rot_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/601/policy", help="Path to the actor checkpoint")
+    # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/beta_tracking_env/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
@@ -163,7 +163,7 @@ def run(args=get_args()) -> None:
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
     #log_folder = os.path.join(os.path.dirname(__file__), "results", actor_info[1], actor_info[2], actor_info[3])
-    log_folder = "/home/scratch/jiayuc2/results/old/ppo_betan"
+    log_folder = "/home/scratch/jiayuc2/results/old1/ppo_rot"
     os.makedirs(log_folder, exist_ok=True)
 
     # init storage for all results

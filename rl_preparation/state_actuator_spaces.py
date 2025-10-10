@@ -12,14 +12,14 @@ from envs.utils.rewards import ProfileTrackingReward, TrackingReward
 
 # need to modify
 track_signals = [
-            #   "rotation_component1", 
-            #   "rotation_component2", 
-            #   "rotation_component3", 
-            #   "rotation_component4",
-              "dens_component1", 
-              "dens_component2", 
-              "dens_component3", 
-              "dens_component4",
+              "rotation_component1", 
+              "rotation_component2", 
+              "rotation_component3", 
+              "rotation_component4",
+            #   "dens_component1", 
+            #   "dens_component2", 
+            #   "dens_component3", 
+            #   "dens_component4",
             # "betan_EFIT01"
             ]
 #!!! what you need to specify
@@ -47,15 +47,15 @@ track_signals = [
 #                 "q_EFIT01_component1", 
 #                 "q_EFIT01_component2"]
 #rotation task
-# obs_in_use = ["rotation_component1", 
-#               "rotation_component2", 
-#               "rotation_component3", 
-#               "rotation_component4"]
+obs_in_use = ["rotation_component1", 
+              "rotation_component2", 
+              "rotation_component3", 
+              "rotation_component4"]
 # dens task
-obs_in_use=[ "dens_component1", 
-                 "dens_component2", 
-                 "dens_component3", 
-                 "dens_component4" ]
+# obs_in_use=[ "dens_component1", 
+#                  "dens_component2", 
+#                  "dens_component3", 
+#                  "dens_component4" ]
 
 #need modify
 acts_in_use= ['pinj','tinj', 'gasA','ech_pwr_total']
@@ -70,19 +70,19 @@ action_space = [
     ]
 
 #need modify
-# computed_obs_in_use = [
-#     PTerm(signal_name="rotation_component1", target_idx=0),
-#     PTerm(signal_name="rotation_component2", target_idx=0),
-#     PTerm(signal_name="rotation_component3", target_idx=0),
-#     PTerm(signal_name="rotation_component4", target_idx=0),
-# ]
-
 computed_obs_in_use = [
-    PTerm(signal_name="dens_component1", target_idx=0),
-    PTerm(signal_name="dens_component2", target_idx=0),
-    PTerm(signal_name="dens_component3", target_idx=0),
-    PTerm(signal_name="dens_component4", target_idx=0),
+    PTerm(signal_name="rotation_component1", target_idx=0),
+    PTerm(signal_name="rotation_component2", target_idx=0),
+    PTerm(signal_name="rotation_component3", target_idx=0),
+    PTerm(signal_name="rotation_component4", target_idx=0),
 ]
+
+# computed_obs_in_use = [
+#     PTerm(signal_name="dens_component1", target_idx=0),
+#     PTerm(signal_name="dens_component2", target_idx=0),
+#     PTerm(signal_name="dens_component3", target_idx=0),
+#     PTerm(signal_name="dens_component4", target_idx=0),
+# ]
 
 # computed_obs_in_use = [
 #     PTerm(signal_name="betan_EFIT01", target_idx=0),

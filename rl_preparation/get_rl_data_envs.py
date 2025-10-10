@@ -7,7 +7,7 @@ import pickle
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from rl_preparation.state_actuator_spaces import ( 
+from rl_preparation.state_actuator_spaces_new import ( 
     state_names_to_idxs, 
     actuator_names_to_idxs, 
     get_target_indices, 
@@ -59,6 +59,7 @@ def load_offline_data(env, tracking_target, is_il):
     offline_data['states_positions_upper_bounds'] = hdf['states_positions_upper_bounds'][:]
     offline_data['states_velocity_lower_bounds'] = hdf['states_velocity_lower_bounds'][:]
     offline_data['states_velocity_upper_bounds'] = hdf['states_velocity_upper_bounds'][:]
+    offline_data['traj_start_indices'] = hdf['traj_start_indices'][:]
     if not is_il:
         offline_data['hidden_states'] = hdf['hidden_states'][:]
     hdf.close()
@@ -71,7 +72,7 @@ def load_offline_data(env, tracking_target, is_il):
     offline_data['full_observations'] = offline_data['observations'].copy()
     offline_data['full_actions'] = offline_data['actions'].copy()
     offline_data['full_next_observations'] = offline_data['next_observations'].copy()
-
+    offline_data['traj_start_indices'] = offline_data['traj_start_indices'].copy()
     # get indices of the tracking target in the state space
     with open(raw_data_dir + '/info.pkl', 'rb') as file:
         data_info = pickle.load(file)
@@ -123,7 +124,7 @@ def load_offline_data(env, tracking_target, is_il):
     elif env == "profile_control":
         # change tariningtargets
         if tracking_target in ['dens', 'rotation']:
-            offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'])
+            offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'],eval_mode=False)
         else:
             offline_data['tracking_ref'] = uniform_targets_new(target_lows, target_highs, offline_data['observations'])
         # offline_data['tracking_ref'] = step_function_targets(offline_data['observations'], offline_data['index_list'], offline_data['terminals'], change_every)
@@ -204,7 +205,8 @@ def get_rl_data_envs(env_id, task, device, is_il=False):
     # For fusion_env, the rewards and actions are processed in the env step function.
     if(env_id != "fusion_env"):
         #offline_data['rewards'] = sa_processor.get_reward(offline_data['next_observations'], offline_data['time_step'])
-        offline_data['rewards'] = sa_processor.get_reward_new(offline_data['next_observations'], idx=np.array(np.arange(0, offline_data['observations'].shape[0])))
+        #Debug: Pass a generated absolute index instead of the original 'time_step' to ensure consistency.
+        offline_data['rewards'] = sa_processor.get_reward_new(offline_data['next_observations'], idx=np.array(np.arange(0, offline_data['observations'].shape[0]))) 
         offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
         offline_data['observations'] = sa_processor.get_rl_state(offline_data['observations'], batch_idx=np.arange(0, offline_data['observations'].shape[0]))
         offline_data['next_observations'] = sa_processor.get_rl_state(offline_data['next_observations'], batch_idx=np.arange(1, offline_data['observations'].shape[0]+1))

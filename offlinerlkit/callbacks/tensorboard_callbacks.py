@@ -1,3 +1,4 @@
+
 from stable_baselines3.common.callbacks import BaseCallback
 import numpy as np
 import time
@@ -48,20 +49,41 @@ class TensorBoardLoggingCallback(BaseCallback):
         """Record information at the end of each rollout"""
         # Record rollout statistics
         if hasattr(self.model, 'ep_info_buffer') and len(self.model.ep_info_buffer) > 0:
+            # 收集所有episode的奖励信息
+            for ep_info in self.model.ep_info_buffer:
+                if 'r' in ep_info and ep_info['r'] not in self.episode_rewards:
+                    self.episode_rewards.append(ep_info['r'])
+                if 'l' in ep_info and ep_info['l'] not in self.episode_lengths:
+                    self.episode_lengths.append(ep_info['l'])
+
+            # 记录 episode_reward_mean (这是关键指标!)
+            if len(self.episode_rewards) > 0:
+                episode_reward_mean = np.mean(self.episode_rewards[-100:])  # 最近100个episodes
+                self.logger.record("rollout/episode_reward_mean", episode_reward_mean)
+
+                # 也记录标准差
+                if len(self.episode_rewards) > 1:
+                    episode_reward_std = np.std(self.episode_rewards[-100:])
+                    self.logger.record("rollout/episode_reward_std", episode_reward_std)
+
+            # 记录episode长度的平均值
+            if len(self.episode_lengths) > 0:
+                episode_length_mean = np.mean(self.episode_lengths[-100:])
+                self.logger.record("rollout/episode_length_mean", episode_length_mean)
+
+            # 记录最后一个episode的信息（保持原有功能）
             ep_info = self.model.ep_info_buffer[-1]
             if 'r' in ep_info:
                 self.logger.record("rollout/ep_rew_mean", ep_info['r'])
-                self.episode_rewards.append(ep_info['r'])
             if 'l' in ep_info:
                 self.logger.record("rollout/ep_len_mean", ep_info['l'])
-                self.episode_lengths.append(ep_info['l'])
-        
+
         # Record reward trends
         if len(self.episode_rewards) > 10:
             recent_mean = np.mean(self.episode_rewards[-10:])
             self.logger.record("rollout/recent_reward_trend", recent_mean - self.last_mean_reward)
             self.last_mean_reward = recent_mean
-        
+
         # Record policy statistics
         if hasattr(self.model, 'logger') and hasattr(self.model.logger, 'name_to_value'):
             for key, value in self.model.logger.name_to_value.items():

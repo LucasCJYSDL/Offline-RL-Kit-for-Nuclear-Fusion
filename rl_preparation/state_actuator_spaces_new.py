@@ -12,14 +12,14 @@ from envs.utils.rewards import ProfileTrackingReward, TrackingReward
 
 
 track_signals = [
-            #   "rotation_component1", 
-            #   "rotation_component2", 
-            #   "rotation_component3", 
-            #   "rotation_component4",
-              "dens_component1", 
-              "dens_component2", 
-              "dens_component3", 
-              "dens_component4",
+              "rotation_component1", 
+              "rotation_component2", 
+              "rotation_component3", 
+              "rotation_component4",
+            #   "dens_component1", 
+            #   "dens_component2", 
+            #   "dens_component3", 
+            #   "dens_component4",
             #  "betan_EFIT01"
               ]
 #!!! what you need to specify
@@ -46,15 +46,15 @@ track_signals = [
 #                 "q_EFIT01_component1", 
 #                 "q_EFIT01_component2"]
 
-# obs_in_use = ["rotation_component1", 
-#               "rotation_component2", 
-#               "rotation_component3", 
-#               "rotation_component4"]
+obs_in_use = ["rotation_component1", 
+              "rotation_component2", 
+              "rotation_component3", 
+              "rotation_component4"]
 #obs_in_use =["betan_EFIT01"]
-obs_in_use=[ "dens_component1", 
-                 "dens_component2", 
-                 "dens_component3", 
-                 "dens_component4" ]
+# obs_in_use=[ "dens_component1", 
+#                  "dens_component2", 
+#                  "dens_component3", 
+#                  "dens_component4" ]
 # obs_in_use = [
 #     'betan_EFIT01',
 #     "temp_component1",

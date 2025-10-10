@@ -37,16 +37,16 @@ def get_args():
     parser.add_argument("--cql-alpha-lr", type=float, default=3e-4)
     parser.add_argument("--num-repeat-actions", type=int, default=10)
     
-    parser.add_argument("--epoch", type=int, default=100)
+    parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
-    parser.add_argument("--batch-size", type=int, default=2560)
+    parser.add_argument("--batch-size", type=int, default=256)
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="dens") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=2)
+    parser.add_argument("--cuda_id", type=int, default=3)
 
     return parser.parse_args()
 

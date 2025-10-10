@@ -22,7 +22,8 @@ warmup_steps = 0  # we won't involve the first () steps of each shot in the trai
 change_every = 50 # change the tracking target every () time steps
 #save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old" # the processed data will be saved here
 #save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old_betan" # need to change, the processed data will be saved here
-save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
+#save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
+save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_new"
 os.makedirs(save_data_dir, exist_ok=True)
 
 # rl_shot_list = list(range(reference_shot - 1000, reference_shot + 1000)) # these shots are used for rl training
@@ -38,7 +39,7 @@ code_base = "new" # "old" or "new", old means the code in fusion_env, new means 
 
 if __name__ == "__main__":
     # convert raw data to rl data
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
     all_shots = list(set(rl_shot_list) | set(il_shot_list) | set(tracking_shot_list))
     offline_dst = get_raw_data(raw_data_dir, action_bound_file, state_bound_file, all_shots, warmup_steps) 
     store_offlinerl_dataset(offline_dst, training_model_dir, rl_data_path, il_data_path, tracking_data_path, 

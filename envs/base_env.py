@@ -8,7 +8,7 @@ import torch
 import pickle
 
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
-from rl_preparation.state_actuator_spaces import ( 
+from rl_preparation.state_actuator_spaces_new import ( 
     reward_function,
 )
 from rl_preparation.process_raw_data import raw_data_dir
@@ -117,9 +117,9 @@ class SA_processor: # used for both training and evaluation
             #boundary checkout
             targets = self.training_tracking_targets[time_step] # for training
         # this design is flexible - we are using "-mse" as the reaward
-        reward = reward_function.get_reward(next_state[:, self.idx_list],None,self.info,self.idx_list,targets)
-        # return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
-        return reward
+        # reward = reward_function.get_reward(next_state[:, self.idx_list],None,self.info,self.idx_list,targets)
+        return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
+        # return reward
     def get_reward_new(self, next_state, idx, shot_id=None): 
         """
         Design of the reward function.
@@ -127,14 +127,16 @@ class SA_processor: # used for both training and evaluation
         """
         if np.isscalar(idx): # for evaluation
             assert shot_id is not None
-            time_step = np.array([idx])
+            idx = np.array([idx])
             #time_step = np.clip(time_step, 0, len(self.eval_tracking_targets[shot_id]) - 1)
             targets = self.eval_tracking_targets[shot_id][idx]
         else:
             #boundary checkout
             targets = self.training_tracking_targets[idx] # for training
+        reward = reward_function.get_reward(next_state[:, self.idx_list],None,self.info,self.idx_list,targets)
+        return reward
         # this design is flexible - we are using "-mse" as the reaward
-        return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
+        # return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
 
     def get_plot_quantities(self, shot_id, time_step, state, action):
         """
@@ -250,7 +252,7 @@ class NFBaseEnv: # env for evaluation
         #return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, self.is_done(self.cur_time), {"time_step": self.cur_time}
 
     def get_reward(self, next_state, time_step, shot_id):
-        return self.sa_processor.get_reward(next_state, time_step, shot_id)
+        return self.sa_processor.get_reward_new(next_state, time_step, shot_id)
         
     def is_done(self, time_step):
         # terminates when exceeding the time limit of the shot

@@ -19,7 +19,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/home/scratch/jiayuc2/temp",
+                       default="/home/scratch/jiayuc2/temp_old_reward",
                        help="Base directory for saving all results")
     
     # basic settings
@@ -33,7 +33,7 @@ def get_args():
 
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed1/lr0.0001_steps4096_batch1024_epochs10_gamma0.99_gaelambda0.96_clip0.2_ent0.001_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint") # need to change
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/dens_reset_old_reward/rotation_ppo_seed1/lr0.0003_steps2048_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_timesteps1030000_hidden250x250") # need to change
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
@@ -207,7 +207,7 @@ def run(args=get_args()) -> None:
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    log_folder = os.path.join(args.save_base_dir, "results", actor_info[-1])
+    log_folder = os.path.join(args.save_base_dir,args.task, "results", actor_info[-1])
     os.makedirs(log_folder, exist_ok=True)
 
     for shot in shot_list:
