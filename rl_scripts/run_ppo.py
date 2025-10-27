@@ -26,27 +26,31 @@ def get_args():
     parser.add_argument("--algo-name", type=str, default="ppo")
     
 
-    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/dens_reset_old_reward", 
+    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network", 
                        help="Specify output directory path, use default path if not specified")
     # parser.add_argument("--output-dir", type=str, default=None, 
     #                     help="Specify output directory path, use default path if not specified")
     # PPO hyperparameters
-    parser.add_argument("--learning-rate", type=float, default=2e-4 )
+    parser.add_argument("--learning-rate", type=float, default=3e-3) 
     parser.add_argument("--n-steps", type=int, default=2048)
-    parser.add_argument("--batch-size", type=int, default=512)
+    parser.add_argument("--batch-size", type=int, default=1024)
     parser.add_argument("--n-epochs", type=int, default=20 )
-    parser.add_argument("--gamma", type=float, default=0.99 )
-    parser.add_argument("--gae-lambda", type=float, default=0.95)
-    parser.add_argument("--clip-range", type=float, default=0.15)
-    parser.add_argument("--ent-coef", type=float, default=0.0)
+    parser.add_argument("--gamma", type=float, default=0.952)#0.952
+    parser.add_argument("--gae-lambda", type=float, default=0.98)#0.98
+    parser.add_argument("--clip-range", type=float, default=0.148)
+    parser.add_argument("--ent-coef", type=float, default=0.0067)
     parser.add_argument("--vf-coef", type=float, default=1)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
-    parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
+ #   parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
+    parser.add_argument("--pol-hidden-dims", type=int, nargs='*', default=[250, 250],
+                       help="Policy network hidden layer dimensions")
+    parser.add_argument("--val-hidden-dims", type=int, nargs='*', default=[250, 250],
+                       help="Value network hidden layer dimensions")
     
     # training parameters
-    parser.add_argument("--total-timesteps", type=int, default=750000)
+    parser.add_argument("--total-timesteps", type=int, default=800_000)#1500_000
     parser.add_argument("--eval-freq", type=int, default=10000)
-    parser.add_argument("--eval-episodes", type=int, default=5)
+    parser.add_argument("--eval-episodes", type=int, default=6)
     parser.add_argument("--save-freq", type=int, default=10000)
     
     # environment parameter
@@ -56,7 +60,7 @@ def get_args():
     parser.add_argument("--max_start_idx",  type=int, default=20)
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="dens") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=5)
     return parser.parse_args()
@@ -69,13 +73,12 @@ class GymnasiumWrapper(gym.Env):
         super().__init__()
         self.env = custom_env
 
-        # 设置观测和动作空间
-        # 先获取一个观测样本来确定正确的观测空间
+
         obs_sample = custom_env.reset()
         if isinstance(obs_sample, tuple):
             obs_sample = obs_sample[0]  # 处理新版gym返回(obs, info)的情况
 
-        # 确保观测是一维的
+    
         if hasattr(obs_sample, 'shape') and len(obs_sample.shape) > 1:
             obs_sample = obs_sample.flatten()
 
@@ -131,13 +134,13 @@ class GymnasiumWrapper(gym.Env):
 
             # 确保观测形状正确
             if hasattr(obs, 'shape') and len(obs.shape) > 1:
-                obs = obs.flatten()  # 展平多维观测
+                obs = obs.flatten()  
 
             # 确保reward是标量
             if hasattr(reward, '__len__') and len(reward) == 1:
                 reward = float(reward[0])
             elif hasattr(reward, '__len__'):
-                reward = float(reward.sum())  # 如果是多维，求和
+                reward = float(reward.sum()) 
             else:
                 reward = float(reward)
 
@@ -238,7 +241,7 @@ def train(args=get_args()):
         dynamics_model,
         termination_fn,
         reward_fn,
-        penalty_coef=0.5  # PPO不需要不确定性惩罚
+        penalty_coef=0.0  
     )
     
     # 创建PPO策略
@@ -264,7 +267,9 @@ def train(args=get_args()):
                   f"vf{args.vf_coef}_"
                   f"maxgrad{args.max_grad_norm}_"
                   f"timesteps{args.total_timesteps}_"
-                  f"hidden{'x'.join(map(str, args.hidden_dims))}")
+                  #f"hidden{'x'.join(map(str, args.hidden_dims))}")
+                  f"pol{'x'.join(map(str, args.pol_hidden_dims))}_"
+                  f"val{'x'.join(map(str, args.val_hidden_dims))}")
         output_dir = os.path.join(base_dir, f"{args.task}_{args.algo_name}_seed{args.seed}",param_signature)
         os.makedirs(output_dir, exist_ok=True)
         
@@ -292,7 +297,9 @@ def train(args=get_args()):
         ent_coef=args.ent_coef,
         vf_coef=args.vf_coef,
         max_grad_norm=args.max_grad_norm,
-        hidden_dims=args.hidden_dims,
+        #hidden_dims=args.hidden_dims,
+        pol_hidden_dims=args.pol_hidden_dims,  
+        val_hidden_dims=args.val_hidden_dims,  
         tensorboard_log=tb_log_dir  
     )
 
@@ -373,7 +380,9 @@ def train(args=get_args()):
     convert_save_callback = ConvertAndSaveCallback(
         save_path=os.path.join(output_dir, "checkpoint"),
         save_freq=args.save_freq,
-        hidden_dims=args.hidden_dims,
+        #hidden_dims=args.hidden_dims,
+        pol_hidden_dims=args.pol_hidden_dims,  
+        val_hidden_dims=args.val_hidden_dims,  
         verbose=1
     )
     callbacks.append(convert_save_callback)

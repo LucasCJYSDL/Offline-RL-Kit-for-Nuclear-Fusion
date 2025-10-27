@@ -16,7 +16,8 @@ class Controller:
             latent_dim=getattr(actor_backbone, "output_dim"),
             output_dim=args.action_dim,
             unbounded=True,
-            conditioned_sigma=True,
+            #conditioned_sigma=True,
+            conditioned_sigma=False,
             max_mu=args.max_action
             )
             self.actor = ActorProb(actor_backbone, dist, args.device)

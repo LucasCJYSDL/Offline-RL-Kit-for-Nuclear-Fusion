@@ -65,6 +65,72 @@ def plot_comparison_tracking_quantities(time_array, target_quan_array, real_quan
     
     return save_path
 
+def plot_comparison_tracking_quantities_with_units(time_array, target_quan_array, real_quan_array,
+                                       old_ppo_quan_array, new_ppo_quan_array,
+                                       quan_names, shot_id, log_folder):
+    all_titles = {
+        "rotation":['Rotation (km/s)'],
+        "pinj": ['Power Injected (kW)'],
+        "tinj": ['Torque Injected (Nm)'],
+        "ech_pwr_total":[ 'ECH Power (W)'],
+        "dstdenp":[ 'Density (10^19)'],
+        'gasA':[ 'Gas A (Voltage)'],
+        'dens': ['Density'],
+    }
+    n = len([quan_names])
+    rows = (n + 1) // 2  # calculate the number of rows needed for 2 subfigures per row
+    fig, axes = plt.subplots(rows, 1, figsize=(12, 5* rows), sharex=True, sharey=False)
+    quan_names = [quan_names]
+    tidx = len(time_array)-1
+    # Handle axes properly for different subplot configurations
+    if n == 1:
+        axes = [axes] if rows == 1 else axes.flatten()
+    else:
+        axes = axes.flatten()
+
+    for i in range(n):
+        quan_name = quan_names[i]
+        if quan_name == 'q_EFIT01':
+            axes[i].plot(1/real_quan_array[tidx], ls='--', color='black', label='True')
+            axes[i].plot(1/target_quan_array[0, tidx], ls='-', color='red', label='Target')
+            axes[i].plot(1/old_ppo_quan_array[tidx], color='green', label='Old PPO Agent')
+            axes[i].plot(1/old_ppo_quan_array[tidx, :].T, color='red', alpha=0.1)
+            axes[i].set_ylim([0.75, 6])
+            axes[i].set_title('q')
+            axes[i].set_xlabel('Normalized Radius')
+            axes[i].legend()
+            axes[i].grid()
+        else:
+            axes[i].plot(target_quan_array[tidx], ls='-', color='green', label='Target')
+            axes[i].plot(old_ppo_quan_array[tidx], color='red', label='Old PPO Agent')
+            axes[i].plot(old_ppo_quan_array[tidx, :].T, color='red', alpha=0.1)
+            axes[i].plot(new_ppo_quan_array[tidx], color='orange', label='New PPO Agent')
+            axes[i].plot(new_ppo_quan_array[tidx, :].T, color='orange', alpha=0.1)
+
+            # axes[i].set_ylim(limits[pname])
+            axes[i].set_title(all_titles[quan_name][0])
+            x_values = np.linspace(0.0, len(target_quan_array[tidx]), 7)
+            new_x_values = np.linspace(0.0, 1, 7)
+            axes[i].set_xticks(x_values)
+            axes[i].set_xticklabels([f"{label:.2f}" for label in new_x_values])
+            axes[i].set_xlabel('Normalized Radius')
+            axes[i].legend()
+            axes[i].grid()
+
+
+    # remove unused subplots
+    for j in range(n, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    
+    # save the figure 
+    save_path = os.path.join(log_folder, f"{shot_id}_comparison_tracking_quantities_physical.png")
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close(fig)
+    
+    return save_path
+
 
 def plot_comparison_actions(time_array, real_act_array, old_ppo_act_array,
                            new_ppo_act_array, act_names, shot_id, log_folder):

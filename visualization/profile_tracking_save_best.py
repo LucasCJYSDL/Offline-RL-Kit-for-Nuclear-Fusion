@@ -10,14 +10,13 @@ import json
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
-from visualization.controller_new import Controller
 from visualization.controller_best import ControllerBest
-from visualization.plotter import plot_tracking_quantities, plot_actions, plot_tracking_quantities_with_units
-from  envs.utils.profile_util import reconstruct_profile_from_state
+from visualization.plotter import plot_tracking_quantities, plot_actions
+
 
 #!!! what you need to specify
 def get_args():
-    parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
+    parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments using best model")
 
     parser.add_argument("--save_base_dir", type=str, 
                        default="/home/scratch/jiayuc2/temp_new",
@@ -33,8 +32,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
-    # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps800000_pol250x250_val250x250") # need to change
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
@@ -183,7 +181,7 @@ def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
 
 def run(args=get_args()) -> None:
     # register an env
-    args.device = torch.device("cuda:5".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
+    args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=args.il_actor) # these are the data and env used to train the actor
     args.obs_dim = offline_data['observations'].shape[1]
     args.action_dim = offline_data['actions'].shape[1]
@@ -197,9 +195,12 @@ def run(args=get_args()) -> None:
     torch.backends.cudnn.deterministic = True
     env.seed(args.seed)
 
-    # load up the actor
-    #controller = Controller(args)
+    # load up the best model actor
+    print("=" * 80)
+    print("Loading BEST MODEL (from best_model.zip)")
+    print("=" * 80)
     controller = ControllerBest(args)
+
     all_results = {}
     shot_data_dict = {}  # For saving shot data
     
@@ -208,7 +209,7 @@ def run(args=get_args()) -> None:
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    log_folder = os.path.join(args.save_base_dir,args.task, "results", actor_info[-1])
+    log_folder = os.path.join(args.save_base_dir, args.task, "results_best", actor_info[-1])
     os.makedirs(log_folder, exist_ok=True)
 
     for shot in shot_list:
@@ -217,7 +218,6 @@ def run(args=get_args()) -> None:
 
         time_array = []
         target_quan_array, real_quan_array, cur_quan_array, real_act_array, cur_act_array = [], [], [], [], []
-        reconstruct_target_quan_array, reconstruct_real_quan_array, reconstruct_cur_quan_array, reconstruct_real_act_array, reconstruct_cur_act_array = [], [], [], [], []
         while True:
             action = controller.act(obs)
             next_obs, reward, terminal, info = env.step(action)
@@ -238,26 +238,21 @@ def run(args=get_args()) -> None:
                 break
 
             obs = next_obs
-
-        reconstruct_real_quan_array = reconstruct_profile_from_state(args.task, np.array(real_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
-        reconstruct_target_quan_array = reconstruct_profile_from_state(args.task, np.array(target_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
-        reconstruct_cur_quan_array = reconstruct_profile_from_state(args.task, np.array(cur_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
-
+            
         # Convert to numpy arrays
         target_quan_array = np.array(target_quan_array)
         cur_quan_array = np.array(cur_quan_array)
         cur_act_array = np.array(cur_act_array)
-        reconstruct_target_quan_array = np.array(reconstruct_target_quan_array)
-        reconstruct_cur_quan_array = np.array(reconstruct_cur_quan_array)
         time_array = np.array(time_array)
         
         # 计算量化指标
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
+        
         all_results[f'shot_{shot}'] = {
             'shot_id': shot,
             'episode_reward': episode_reward,
             'episode_length': episode_length,
-            'tracking_metrics': tracking_metrics,
+            'tracking_metrics': tracking_metrics
         }
         
         # Save shot data for later comparison
@@ -265,24 +260,25 @@ def run(args=get_args()) -> None:
             'shot_id': shot,
             'cur_quan_array': cur_quan_array,
             'cur_act_array': cur_act_array,
-            'reconstruct_cur_quan_array': reconstruct_cur_quan_array,
             'episode_reward': episode_reward,
             'episode_length': episode_length
         }
         
         # make plots
         plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
-        plot_tracking_quantities_with_units(time_array,  reconstruct_target_quan_array, real_quan_array, reconstruct_cur_quan_array, args.task, shot, log_folder)
         if args.plot_actuators:
             plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
 
+        # 打印详细指标
         print_tracking_metrics(shot, tracking_metrics, episode_reward, episode_length)
+
     # Save tracking results
     save_tracking_results(all_results, log_folder)
     
     # Save shot data for comparison
     actor_info_str = "_".join(actor_info[1:])  # Join actor path components
-    save_shot_data(shot_data_dict, args.save_base_dir, args.task, actor_info_str)
+    save_shot_data(shot_data_dict, args.save_base_dir, args.task, actor_info_str + "_best")
 
 if __name__ == "__main__":
     run()
+

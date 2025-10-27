@@ -99,11 +99,11 @@ computed_obs_in_use = [
 ]
 
 # computed_obs_in_use = [
-#     # PTerm(signal_name="dens_component1", target_idx=0),
-#     # PTerm(signal_name="dens_component2", target_idx=0),
-#     # PTerm(signal_name="dens_component3", target_idx=0),
-#     # PTerm(signal_name="dens_component4", target_idx=0),
-#     PTerm(signal_name="betan_EFIT01", target_idx=0),
+#     PTerm(signal_name="dens_component1", target_idx=0),
+#     PTerm(signal_name="dens_component2", target_idx=0),
+#     PTerm(signal_name="dens_component3", target_idx=0),
+#     PTerm(signal_name="dens_component4", target_idx=0),
+# # # # # #     #PTerm(signal_name="betan_EFIT01", target_idx=0),
 # ]
 
 beams = ['30L', '30R', '150L', '150R', '210L', '210R', '330L', '330R']

@@ -1,113 +1,104 @@
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.distributions import Normal
-from typing import Dict, Union, Tuple, Optional
-from collections import defaultdict
+from typing import Dict
 import gymnasium as gym
 import os
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.callbacks import BaseCallback
-import time
 from offlinerlkit.policy.base_policy import BasePolicy
 
 
 
 
 
-def convert_sb3_to_offlinerl_format(sb3_state_dict: Dict[str, torch.Tensor], hidden_dims: list) -> Dict[str, torch.Tensor]:
+def convert_sb3_to_offlinerl_format(sb3_state_dict: Dict[str, torch.Tensor], pol_hidden_dims: list, val_hidden_dims: list) -> Dict[str, torch.Tensor]:
     """
-    将SB3的state_dict转换为与MOPO/COMBO兼容的格式
+    将 SB3 的 state_dict 转换为 offlinerlkit 格式
 
     Args:
-        sb3_state_dict: SB3 PPO模型的state_dict
-        hidden_dims: 网络隐藏层维度，用于确定层数
+        sb3_state_dict: SB3 模型的 state_dict
+        pol_hidden_dims: Policy network 的隐藏层维度列表
+        val_hidden_dims: Value network 的隐藏层维度列表
 
     Returns:
-        转换后的state_dict，兼容MOPO/COMBO格式
+        offlinerl_state_dict: 转换后的 state_dict
     """
-    converted = {}
+    offlinerl_state_dict = {}
 
-    # 转换Actor网络 - 使用pi_features_extractor和mlp_extractor.policy_net
-    # 第一层：pi_features_extractor.net.0 -> actor.backbone.model.0
-    if "pi_features_extractor.net.0.weight" in sb3_state_dict:
-        converted["actor.backbone.model.0.weight"] = sb3_state_dict["pi_features_extractor.net.0.weight"]
-    if "pi_features_extractor.net.0.bias" in sb3_state_dict:
-        converted["actor.backbone.model.0.bias"] = sb3_state_dict["pi_features_extractor.net.0.bias"]
+    # 1. 转换 policy network (mlp_extractor.policy_net -> actor_backbone)
+    layer_idx = 0
+    for i, hidden_dim in enumerate(pol_hidden_dims):
+        # SB3: mlp_extractor.policy_net.{layer_idx}.weight/bias
+        # OfflineRL: actor.backbone.model.{i*2}.weight/bias
+        weight_key_sb3 = f'mlp_extractor.policy_net.{layer_idx}.weight'
+        bias_key_sb3 = f'mlp_extractor.policy_net.{layer_idx}.bias'
 
-    # 第二层：pi_features_extractor.net.2 -> actor.backbone.model.2
-    if "pi_features_extractor.net.2.weight" in sb3_state_dict:
-        converted["actor.backbone.model.2.weight"] = sb3_state_dict["pi_features_extractor.net.2.weight"]
-    if "pi_features_extractor.net.2.bias" in sb3_state_dict:
-        converted["actor.backbone.model.2.bias"] = sb3_state_dict["pi_features_extractor.net.2.bias"]
+        if weight_key_sb3 in sb3_state_dict:
+            offlinerl_state_dict[f'actor.backbone.model.{i*2}.weight'] = sb3_state_dict[weight_key_sb3]
+            offlinerl_state_dict[f'actor.backbone.model.{i*2}.bias'] = sb3_state_dict[bias_key_sb3]
 
-    # 转换Actor输出层（action_net）
-    # SB3: action_net.weight/bias -> OfflineRL: actor.dist_net.mu.weight/bias
-    if "action_net.weight" in sb3_state_dict:
-        converted["actor.dist_net.mu.weight"] = sb3_state_dict["action_net.weight"]
-    if "action_net.bias" in sb3_state_dict:
-        converted["actor.dist_net.mu.bias"] = sb3_state_dict["action_net.bias"]
+        layer_idx += 2  # Linear + ReLU
 
-    # 转换log_std为sigma参数
-    if "log_std" in sb3_state_dict:
-        log_std = sb3_state_dict["log_std"]
-        # log_std是1维的[action_dim]，需要转换为sigma网络的权重和偏置
-        action_dim = log_std.shape[0]
-        latent_dim = sb3_state_dict["action_net.weight"].shape[1]  # 从action_net获取输入维度
+    # 2. 转换 action_net (mean 输出层)
+    if 'action_net.weight' in sb3_state_dict:
+        offlinerl_state_dict['actor.dist_net.mu.weight'] = sb3_state_dict[f'action_net.weight']
+        offlinerl_state_dict['actor.dist_net.mu.bias'] = sb3_state_dict[f'action_net.bias']
 
-        # 创建sigma网络：Linear(latent_dim, action_dim)
-        # 权重形状应该是[action_dim, latent_dim]
-        converted["actor.dist_net.sigma.weight"] = torch.zeros(action_dim, latent_dim)
-        # 偏置使用log_std的值
-        converted["actor.dist_net.sigma.bias"] = log_std
-    else:
-        # 如果没有log_std，创建默认值
-        action_dim = sb3_state_dict["action_net.weight"].shape[0]
-        latent_dim = sb3_state_dict["action_net.weight"].shape[1]
-        converted["actor.dist_net.sigma.weight"] = torch.zeros(action_dim, latent_dim)
-        converted["actor.dist_net.sigma.bias"] = torch.zeros(action_dim)
+    # 3. 转换 log_std (独立参数)
+    if 'log_std' in sb3_state_dict:
+        # SB3 的 log_std 是 (latent_dim, action_dim) 对于 gSDE
+        # OfflineRL 的 sigma 是 Linear 层
+        log_std = sb3_state_dict['log_std']
 
-    # 转换Critic网络 - 使用vf_features_extractor
-    # 第一层：vf_features_extractor.net.0 -> critic1.backbone.model.0
-    if "vf_features_extractor.net.0.weight" in sb3_state_dict:
-        converted["critic1.backbone.model.0.weight"] = sb3_state_dict["vf_features_extractor.net.0.weight"]
-    if "vf_features_extractor.net.0.bias" in sb3_state_dict:
-        converted["critic1.backbone.model.0.bias"] = sb3_state_dict["vf_features_extractor.net.0.bias"]
+        # 如果是 gSDE (2D tensor)
+        if log_std.dim() == 2:
+            # gSDE: log_std 形状是 (latent_dim, action_dim)
+            # 转换为固定的 sigma_param: (action_dim, 1)
+            # 策略：取所有 latent 维度的平均值
+            avg_log_std = log_std.mean(dim=0, keepdim=True).T  # (action_dim, 1)
+            offlinerl_state_dict['actor.dist_net.sigma_param'] = avg_log_std
+        else:
+            # 标准 PPO (1D tensor): log_std 形状是 (action_dim,)
+            # 转换为 sigma_param: (action_dim, 1)
+            offlinerl_state_dict['actor.dist_net.sigma_param'] = log_std.unsqueeze(-1)
 
-    # 第二层：vf_features_extractor.net.2 -> critic1.backbone.model.2
-    if "vf_features_extractor.net.2.weight" in sb3_state_dict:
-        converted["critic1.backbone.model.2.weight"] = sb3_state_dict["vf_features_extractor.net.2.weight"]
-    if "vf_features_extractor.net.2.bias" in sb3_state_dict:
-        converted["critic1.backbone.model.2.bias"] = sb3_state_dict["vf_features_extractor.net.2.bias"]
 
-    # 转换Critic输出层（value_net）
-    # SB3: value_net.weight/bias -> OfflineRL: critic1.last.weight/bias
-    if "value_net.weight" in sb3_state_dict:
-        converted["critic1.last.weight"] = sb3_state_dict["value_net.weight"]
-    if "value_net.bias" in sb3_state_dict:
-        converted["critic1.last.bias"] = sb3_state_dict["value_net.bias"]
+    # 4. 转换 value network (mlp_extractor.value_net -> critic_backbone)
+    layer_idx = 0
+    for i, hidden_dim in enumerate(val_hidden_dims):
+        weight_key_sb3 = f'mlp_extractor.value_net.{layer_idx}.weight'
+        bias_key_sb3 = f'mlp_extractor.value_net.{layer_idx}.bias'
+
+        if weight_key_sb3 in sb3_state_dict:
+            offlinerl_state_dict[f'critic1.backbone.model.{i*2}.weight'] = sb3_state_dict[weight_key_sb3]
+            offlinerl_state_dict[f'critic1.backbone.model.{i*2}.bias'] = sb3_state_dict[bias_key_sb3]
+
+        layer_idx += 2  # Linear + ReLU
+
+    # 5. 转换 value_net (value 输出层)
+    if 'value_net.weight' in sb3_state_dict:
+        offlinerl_state_dict['critic1.last.weight'] = sb3_state_dict['value_net.weight']
+        offlinerl_state_dict['critic1.last.bias'] = sb3_state_dict['value_net.bias']
 
     # 为了兼容性，也创建critic2（通常与critic1相同）
-    for key in list(converted.keys()):
+    for key in list(offlinerl_state_dict.keys()):
         if key.startswith("critic1."):
             critic2_key = key.replace("critic1.", "critic2.")
-            converted[critic2_key] = converted[key].clone()
+            offlinerl_state_dict[critic2_key] = offlinerl_state_dict[key].clone()
 
-    return converted
+    return offlinerl_state_dict
 
 
 class ConvertAndSaveCallback(BaseCallback):
     """
     自定义Callback，在保存时自动进行权重转换
     """
-    def __init__(self, save_path: str, hidden_dims: list, save_freq: int = 1000, verbose: int = 0):
+    def __init__(self, save_path: str, pol_hidden_dims: list, val_hidden_dims: list, save_freq: int = 1000, verbose: int = 0):
         super().__init__(verbose)
         self.save_path = save_path
-        self.hidden_dims = hidden_dims
+        self.pol_hidden_dims = pol_hidden_dims  # 新参数
+        self.val_hidden_dims = val_hidden_dims  # 新参数
         self.save_freq = save_freq
 
     def _init_callback(self) -> None:
@@ -129,7 +120,11 @@ class ConvertAndSaveCallback(BaseCallback):
         sb3_state_dict = self.model.policy.state_dict()
 
         # 转换为OfflineRL格式
-        converted_state_dict = convert_sb3_to_offlinerl_format(sb3_state_dict, self.hidden_dims)
+        converted_state_dict = convert_sb3_to_offlinerl_format(
+            sb3_state_dict,
+            self.pol_hidden_dims,  # 传入新参数
+            self.val_hidden_dims   # 传入新参数
+        )
 
         # 保存转换后的模型
         save_file = os.path.join(self.save_path, "policy.pth")
@@ -171,6 +166,9 @@ class FusionPPOEnv(gym.Env):
         self.time_step = 0
         self.max_episode_length = 200
         self.episode_length = 0
+
+        # 用于记录 episode 统计信息（供 SB3 的 rollout 指标使用）
+        self.episode_reward = 0.0
         
     def reset(self, seed=None, options=None):
         """重置环境"""
@@ -195,6 +193,9 @@ class FusionPPOEnv(gym.Env):
         # 获取观测 - 直接使用已经处理过的观测数据
         obs = self.offline_data['observations'][idx].copy()
         
+        # 重置 episode 统计信息（供 SB3 记录 rollout 指标）
+        self.episode_reward = 0.0
+        
         return obs.astype(np.float32), {}
     
     def step(self, action):
@@ -202,8 +203,8 @@ class FusionPPOEnv(gym.Env):
         # 确保动作在正确范围内
         # print("action")
         # print(action)
-        action=action
-        action = np.clip(action, -1.0, 1.0)
+        #action=action
+        #action = np.clip(action, -1.0, 1.0)
         
         # 转换动作格式
         step_action = self.sa_processor.get_step_action(action.reshape(1, -1))[0]
@@ -239,6 +240,10 @@ class FusionPPOEnv(gym.Env):
         self.time_step += 1
         self.episode_length += 1
         self.current_global_idx +=1
+
+        reward_scalar = float(reward[0, 0])
+        self.episode_reward += reward_scalar
+
         # 获取下一观测 - 从完整状态中提取选定的状态维度，然后通过sa_processor处理
         selected_state = self.current_full_state[self.state_idxs]
         next_obs = self.sa_processor.get_rl_state(
@@ -249,66 +254,20 @@ class FusionPPOEnv(gym.Env):
         
         # 检查是否结束
         done = terminal[0] or self.episode_length >= self.max_episode_length
+
+        if done:
+            import time
+            ep_info = {
+                "r": round(self.episode_reward, 6),  # episode 总奖励
+                "l": self.episode_length,             # episode 长度
+            }
+            info["episode"] = ep_info  
         
         return next_obs.astype(np.float32), float(reward[0]), done, False, info
 
 
-# 全局变量用于传递hidden_dims配置
-_GLOBAL_HIDDEN_DIMS = [256, 256]
-
-class FusionFeatureExtractor(BaseFeaturesExtractor):
-    """
-    核聚变专用的特征提取器
-    """
-    def __init__(self, observation_space: gym.Space, features_dim: int = 256, **kwargs):
-        # 从kwargs中获取hidden_dims，如果没有提供则使用全局变量
-        hidden_dims = kwargs.get('hidden_dims', _GLOBAL_HIDDEN_DIMS)
-
-        # 如果提供了hidden_dims，使用最后一层作为features_dim
-        if 'hidden_dims' in kwargs:
-            features_dim = hidden_dims[-1]
-        else:
-            # 使用全局变量的最后一层作为features_dim
-            features_dim = _GLOBAL_HIDDEN_DIMS[-1]
-
-        super().__init__(observation_space, features_dim)
-
-        n_input = observation_space.shape[0]
-
-        # 构建动态网络结构
-        layers = []
-        prev_dim = n_input
-
-        # 添加隐藏层
-        for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU()
-            ])
-            prev_dim = hidden_dim
-
-        # 添加输出层
-        layers.extend([
-            nn.Linear(prev_dim, features_dim),
-            nn.ReLU()
-        ])
-
-        self.net = nn.Sequential(*layers)
-    
-    def forward(self, observations: torch.Tensor) -> torch.Tensor:
-        return self.net(observations)
-
-
-class FusionPPOPolicy(ActorCriticPolicy):
-    """
-    核聚变专用的PPO策略
-    """
-    def __init__(self, *args, **kwargs):
-        # 设置自定义特征提取器
-        kwargs['features_extractor_class'] = FusionFeatureExtractor
-        kwargs['features_extractor_kwargs'] = {'features_dim': 256}
-        
-        super().__init__(*args, **kwargs)
+# 删除 FusionFeatureExtractor 和 FusionPPOPolicy 类
+# 使用 SB3 标准的 MlpPolicy
 
 
 class PPOPolicy(BasePolicy):
@@ -334,21 +293,24 @@ class PPOPolicy(BasePolicy):
         ent_coef: float = 0.0,
         vf_coef: float = 0.5,
         max_grad_norm: float = 0.5,
-        tensorboard_log: str = None,  # 添加这个参数
+        pol_hidden_dims: list = [250, 250],  # 新参数
+        val_hidden_dims: list = [250, 250],  # 新参数
+        tensorboard_log: str = None,
         **kwargs
     ):
         super().__init__()
-        
+
         self.dynamics = dynamics
         self.state_idxs = state_idxs
         self.action_idxs = action_idxs
         self.sa_processor = sa_processor
         self.offline_data = offline_data
         self.device = device
-        self.tensorboard_log = tensorboard_log  
+        self.tensorboard_log = tensorboard_log
 
         # 存储网络配置用于权重转换
-        self.hidden_dims = kwargs.get('hidden_dims', [256, 256])
+        self.pol_hidden_dims = pol_hidden_dims
+        self.val_hidden_dims = val_hidden_dims
 
         # 创建环境
         self.env = FusionPPOEnv(
@@ -363,25 +325,19 @@ class PPOPolicy(BasePolicy):
         # 包装为向量化环境
         self.vec_env = DummyVecEnv([lambda: self.env])
 
-        # 配置网络架构以匹配MOPO/COMBO
+        # 配置 policy_kwargs - 分离网络架构
         policy_kwargs = {
-            "net_arch": self.hidden_dims,
-            "activation_fn": torch.nn.ReLU,
-            "features_extractor_class": FusionFeatureExtractor,
-            "features_extractor_kwargs": {
-                "features_dim": self.hidden_dims[-1],
-                "hidden_dims": self.hidden_dims
-            }
+            'net_arch': dict(pi=pol_hidden_dims, vf=val_hidden_dims),  # 分离的网络架构
+            'activation_fn': torch.nn.ReLU,                            # ReLU 激活
+            'share_features_extractor': False,                         # 不共享 features extractor
+            'squash_output': True, 
+            'log_std_init': 0.0,                                       # log_std 初始值
         }
         policy_kwargs.update(kwargs.get('policy_kwargs', {}))
 
-        # 设置全局变量
-        global _GLOBAL_HIDDEN_DIMS
-        _GLOBAL_HIDDEN_DIMS = self.hidden_dims
-
-       
+        # 创建 PPO 模型 - 使用标准 MlpPolicy + gSDE + tanh
         self.model = PPO(
-            policy=FusionPPOPolicy,
+            policy="MlpPolicy",  # 使用标准策略字符串
             env=self.vec_env,
             learning_rate=learning_rate,
             n_steps=n_steps,
@@ -393,9 +349,11 @@ class PPOPolicy(BasePolicy):
             ent_coef=ent_coef,
             vf_coef=vf_coef,
             max_grad_norm=max_grad_norm,
+            use_sde=True,           # 启用 gSDE (作为 PPO 的直接参数)
+            sde_sample_freq=-1,     # 每次都重新采样噪声
             device=device,
             policy_kwargs=policy_kwargs,
-            tensorboard_log=tensorboard_log,  
+            tensorboard_log=tensorboard_log,
             verbose=1
         )
         
@@ -424,7 +382,11 @@ class PPOPolicy(BasePolicy):
 
         # 保存转换后的格式
         sb3_state_dict = self.model.policy.state_dict()
-        converted_state_dict = convert_sb3_to_offlinerl_format(sb3_state_dict, self.hidden_dims)
+        converted_state_dict = convert_sb3_to_offlinerl_format(
+            sb3_state_dict,
+            self.pol_hidden_dims,
+            self.val_hidden_dims
+        )
 
         # 确保目录存在
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -440,7 +402,11 @@ class PPOPolicy(BasePolicy):
     def state_dict(self) -> Dict[str, torch.Tensor]:
         """返回转换后的完整policy状态"""
         sb3_state_dict = self.model.policy.state_dict()
-        return convert_sb3_to_offlinerl_format(sb3_state_dict, self.hidden_dims)
+        return convert_sb3_to_offlinerl_format(
+            sb3_state_dict,
+            self.pol_hidden_dims,
+            self.val_hidden_dims
+        )
 
     def get_actor(self):
         """提取actor用于评估"""

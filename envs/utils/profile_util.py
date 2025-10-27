@@ -1,9 +1,4 @@
-"""
-Utility functions for dynamics.
 
-Author: Ian Char
-Date: December 15, 2021
-"""
 from typing import Any, Dict
 
 import numpy as np

@@ -6,89 +6,28 @@ import os
 
 class TensorBoardLoggingCallback(BaseCallback):
     """
-    Enhanced TensorBoard monitoring callback - designed specifically for nuclear fusion PPO
+    Simplified TensorBoard monitoring callback
+    只使用 SB3 标准的 rollout/ep_rew_mean 和 rollout/ep_len_mean
     """
     def __init__(self, verbose=0, log_freq=100):
         super().__init__(verbose)
         self.log_freq = log_freq
-        self.episode_rewards = []
-        self.episode_lengths = []
-        self.last_mean_reward = -np.inf
         self.start_time = time.time()
-        
+
     def _on_training_start(self) -> None:
         """Initialization at the start of training"""
         self.start_time = time.time()
         if self.verbose > 0:
-            print(" TensorBoard monitoring started")
-        
+            print("✅ TensorBoard monitoring started")
+
     def _on_step(self) -> bool:
         """Monitoring logic called at each step"""
-        # Record detailed information every log_freq steps
+        # 只记录基本的训练进度信息
         if self.n_calls % self.log_freq == 0:
-            # Record training progress
             self.logger.record("train/timesteps", self.num_timesteps)
-            self.logger.record("train/iterations", self.n_calls // self.log_freq)
             self.logger.record("train/fps", self.num_timesteps / (time.time() - self.start_time))
-            
-            # Record environment statistics
-            if hasattr(self.training_env, 'get_attr'):
-                try:
-                    # Attempt to retrieve environment statistics
-                    env_stats = self.training_env.get_attr('get_episode_rewards')
-                    if env_stats and env_stats[0]:
-                        recent_rewards = env_stats[0][-10:]  # Last 10 episodes
-                        self.logger.record("env/recent_mean_reward", np.mean(recent_rewards))
-                        self.logger.record("env/recent_reward_std", np.std(recent_rewards))
-                except:
-                    pass
-        
+
         return True
-    
-    def _on_rollout_end(self) -> None:
-        """Record information at the end of each rollout"""
-        # Record rollout statistics
-        if hasattr(self.model, 'ep_info_buffer') and len(self.model.ep_info_buffer) > 0:
-            # 收集所有episode的奖励信息
-            for ep_info in self.model.ep_info_buffer:
-                if 'r' in ep_info and ep_info['r'] not in self.episode_rewards:
-                    self.episode_rewards.append(ep_info['r'])
-                if 'l' in ep_info and ep_info['l'] not in self.episode_lengths:
-                    self.episode_lengths.append(ep_info['l'])
-
-            # 记录 episode_reward_mean (这是关键指标!)
-            if len(self.episode_rewards) > 0:
-                episode_reward_mean = np.mean(self.episode_rewards[-100:])  # 最近100个episodes
-                self.logger.record("rollout/episode_reward_mean", episode_reward_mean)
-
-                # 也记录标准差
-                if len(self.episode_rewards) > 1:
-                    episode_reward_std = np.std(self.episode_rewards[-100:])
-                    self.logger.record("rollout/episode_reward_std", episode_reward_std)
-
-            # 记录episode长度的平均值
-            if len(self.episode_lengths) > 0:
-                episode_length_mean = np.mean(self.episode_lengths[-100:])
-                self.logger.record("rollout/episode_length_mean", episode_length_mean)
-
-            # 记录最后一个episode的信息（保持原有功能）
-            ep_info = self.model.ep_info_buffer[-1]
-            if 'r' in ep_info:
-                self.logger.record("rollout/ep_rew_mean", ep_info['r'])
-            if 'l' in ep_info:
-                self.logger.record("rollout/ep_len_mean", ep_info['l'])
-
-        # Record reward trends
-        if len(self.episode_rewards) > 10:
-            recent_mean = np.mean(self.episode_rewards[-10:])
-            self.logger.record("rollout/recent_reward_trend", recent_mean - self.last_mean_reward)
-            self.last_mean_reward = recent_mean
-
-        # Record policy statistics
-        if hasattr(self.model, 'logger') and hasattr(self.model.logger, 'name_to_value'):
-            for key, value in self.model.logger.name_to_value.items():
-                if 'train/' in key:
-                    self.logger.record(key, value)
 
 
 class FusionSpecificCallback(BaseCallback):

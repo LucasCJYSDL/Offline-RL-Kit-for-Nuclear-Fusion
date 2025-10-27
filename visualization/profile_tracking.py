@@ -11,7 +11,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from visualization.controller import Controller
-from visualization.plotter import plot_tracking_quantities, plot_actions
+from visualization.plotter import plot_tracking_quantities, plot_actions, plot_tracking_quantities_with_units
 from  envs.utils.profile_util import reconstruct_profile_from_state
 
 
@@ -47,16 +47,12 @@ def calculate_tracking_metrics(target_array, current_array):
     abs_error = np.abs(error)
 
     metrics = {
-        # 1. 均方根误差 (RMSE)
         'rmse': float(np.sqrt(np.mean(error**2))),
 
-        # 2. 平均绝对误差 (MAE)
         'mae': float(np.mean(abs_error)),
 
-        # 3. 累计绝对误差
         'cumulative_absolute_error': float(np.sum(abs_error)),
 
-        # 4. 累计平方误差
         'cumulative_squared_error': float(np.sum(error**2))
     }
 
@@ -175,6 +171,7 @@ def run(args=get_args()) -> None:
 
         time_array = []
         target_quan_array, real_quan_array, cur_quan_array, real_act_array, cur_act_array = [], [], [], [], []
+        reconstruct_target_quan_array, reconstruct_real_quan_array, reconstruct_cur_quan_array, reconstruct_real_act_array, reconstruct_cur_act_array = [], [], [], [], []
 
         while True:
             action = controller.act(obs)
@@ -197,6 +194,7 @@ def run(args=get_args()) -> None:
 
             obs = next_obs
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
+        reconstruct_tracking_metrics = calculate_tracking_metrics(reconstruct_target_quan_array, reconstruct_cur_quan_array)
         
         all_results[f'shot_{shot}'] = {
             'shot_id': shot,
@@ -205,13 +203,22 @@ def run(args=get_args()) -> None:
             'tracking_metrics': tracking_metrics
         }
         
+        if (args.env == "fusion_env"):
+            reconstruct_target_quan_array = reconstruct_profile_from_state(args.task, np.array(target_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
+            reconstruct_real_quan_array = reconstruct_profile_from_state(args.task, np.array(real_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
+            reconstruct_cur_quan_array = reconstruct_profile_from_state(args.task, np.array(cur_quan_array), env.info, sa_processor.idx_list, unnormalize=True)
+
        
         # make plots
         plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
+        plot_tracking_quantities_with_units(time_array,  reconstruct_target_quan_array, reconstruct_real_quan_array, reconstruct_cur_quan_array, quan_names, shot, log_folder)
         if args.plot_actuators:
             plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
         
+        print("Profiles' metrics:")
         print_tracking_metrics(shot, tracking_metrics, episode_reward, episode_length)
+        print("\nReconstructed profiles' metrics:")
+        print_tracking_metrics(shot, reconstruct_tracking_metrics, episode_reward, episode_length)
 
         # summary
         print("Shot #{} with return {} and length {}".format(shot, episode_reward, episode_length))

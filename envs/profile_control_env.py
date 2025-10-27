@@ -1,8 +1,9 @@
 import torch
 import random
 import numpy as np
-
+import pickle
 from envs.base_env import NFBaseEnv
+from rl_preparation.process_raw_data import raw_data_dir
 
 
 class ProfileControlEnv(NFBaseEnv): # env for evaluation
@@ -13,7 +14,9 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         self.tracking_states, self.tracking_pre_actions, self.tracking_actions = None, None, None
         self.eval_shot_list = list(tracking_data.keys())
         self.tracking_data = tracking_data
-        
+          
+        with open(raw_data_dir + '/info.pkl', 'rb') as file:
+          self.info = pickle.load(file)
 
     def get_eval_shot_list(self):
         """

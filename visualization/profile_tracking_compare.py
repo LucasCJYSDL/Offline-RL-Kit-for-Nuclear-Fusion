@@ -13,14 +13,18 @@ from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from visualization.controller import Controller
 from visualization.comparison_plotter import (
     plot_comparison_tracking_quantities, 
+    plot_comparison_tracking_quantities_with_units,
     plot_comparison_actions,
     plot_metrics_comparison,
     plot_summary_metrics
 )
-
+from  envs.utils.profile_util import reconstruct_profile_from_state
 
 def get_args():
     parser = argparse.ArgumentParser(description="PPO agents comparison arguments")
+    parser.add_argument("--save_base_dir", type=str, 
+                       default="/home/scratch/jiayuc2",
+                       help="Base directory for saving all results")
 
     # basic settings
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
@@ -29,12 +33,16 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="fusion_env") 
-    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
 
     # old PPO controller settings
     parser.add_argument("--old_actor_path", type=str, 
                        default="/home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", 
                        help="Path to the old actor checkpoint")
+    #dens path
+    # /home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy
+    #rot path
+    # /home/scratch/jiayuc2/rl_out/prof_tracking_rot_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/601/policy
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network")
@@ -42,7 +50,7 @@ def get_args():
     
     # new PPO data settings
     parser.add_argument("--new_ppo_data_path", type=str,
-                       default="saved_data/dens/dens_ppo_seed_1&timestamp_25-0929-074550/shot_data.npz",
+                       default="/home/scratch/jiayuc2/temp_new/saved_data/dens/home_scratch_jiayuc2_rl_out_off_test_bao_dens_network_dens_ppo_seed1_lr0.003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps800000_pol250x250_val250x250/shot_data.npz",
                        help="Path to the saved new PPO data")
 
     # comparison settings
@@ -52,8 +60,11 @@ def get_args():
     return parser.parse_args()
 
 
+# MODIFIED FUNCTION
 def calculate_tracking_metrics(target_array, current_array):
-    """计算跟踪性能指标"""
+    """
+    计算每个物理量独立的跟踪性能指标
+    """
     target_array = np.array(target_array)
     current_array = np.array(current_array)
 
@@ -61,33 +72,45 @@ def calculate_tracking_metrics(target_array, current_array):
     error = target_array - current_array
     abs_error = np.abs(error)
 
+    # 沿着时间轴(axis=0)计算每个物理量(component)的MSE和MAE
+    mse_per_quantity = np.mean(error**2, axis=0)
+    mae_per_quantity = np.mean(abs_error, axis=0)
+
+    # 对每个分量的MSE开方
+    rmse_per_quantity = np.sqrt(mse_per_quantity)
+
     metrics = {
-        # 1. 均方根误差 (RMSE)
-        'rmse': float(np.sqrt(np.mean(error**2))),
+        # 返回一个列表, 每个元素对应一个物理量的RMSE
+        'rmse_per_quantity': rmse_per_quantity.tolist(),
 
-        # 2. 平均绝对误差 (MAE)
-        'mae': float(np.mean(abs_error)),
+        # 返回一个列表, 每个元素对应一个物理量的MAE
+        'mae_per_quantity': mae_per_quantity.tolist(),
 
-        # 3. 累计绝对误差
+        # 累计误差仍然是总的聚合值
         'cumulative_absolute_error': float(np.sum(abs_error)),
-
-        # 4. 累计平方误差
         'cumulative_squared_error': float(np.sum(error**2))
     }
 
     return metrics
 
 
+# MODIFIED FUNCTION
 def print_comparison_metrics(shot_id, old_metrics, new_metrics):
-    """打印比较指标"""
+    """打印比较指标, 逐个分量显示"""
     print(f"\nShot #{shot_id} - Metrics Comparison:")
-    print(f"  Old PPO vs Target:")
-    print(f"    RMSE: {old_metrics['rmse']:.4f}, MAE: {old_metrics['mae']:.4f}")
-    print(f"  New PPO vs Target:")
-    print(f"    RMSE: {new_metrics['rmse']:.4f}, MAE: {new_metrics['mae']:.4f}")
-    print(f"  Improvement (New - Old):")
-    print(f"    RMSE: {new_metrics['rmse'] - old_metrics['rmse']:.4f}")
-    print(f"    MAE: {new_metrics['mae'] - old_metrics['mae']:.4f}")
+    
+    num_quantities = len(old_metrics['rmse_per_quantity'])
+    
+    for i in range(num_quantities):
+        print(f"  Component #{i}:")
+        old_rmse = old_metrics['rmse_per_quantity'][i]
+        new_rmse = new_metrics['rmse_per_quantity'][i]
+        old_mae = old_metrics['mae_per_quantity'][i]
+        new_mae = new_metrics['mae_per_quantity'][i]
+        
+        print(f"    Old PPO  | RMSE: {old_rmse:.4f}, MAE: {old_mae:.4f}")
+        print(f"    New PPO  | RMSE: {new_rmse:.4f}, MAE: {new_mae:.4f}")
+        print(f"    Improve. | RMSE: {new_rmse - old_rmse:+.4f}, MAE: {new_mae - old_mae:+.4f}")
 
 
 def load_new_ppo_data(data_path):
@@ -117,6 +140,7 @@ def load_new_ppo_data(data_path):
     return shot_data
 
 
+# MODIFIED FUNCTION
 def save_comparison_results(comparison_results, log_folder):
     """
     Save comparison results to JSON and CSV files
@@ -125,10 +149,10 @@ def save_comparison_results(comparison_results, log_folder):
         comparison_results: Dictionary containing comparison results
         log_folder: Directory to save files
     """
-    # Save results to JSON file
+    # Save results to JSON file (natively supports lists for per-quantity metrics)
     results_file = os.path.join(log_folder, 'comparison_results.json')
     with open(results_file, 'w') as f:
-        json.dump(comparison_results, f, indent=2)
+        json.dump(comparison_results, f, indent=4)
     
     # Save to CSV file
     try:
@@ -136,19 +160,32 @@ def save_comparison_results(comparison_results, log_folder):
         df_data = []
         for shot_key, shot_data in comparison_results.items():
             if shot_key.startswith('shot_'):
-                row = {
-                    'shot_id': shot_data['shot_id'],
-                    'old_ppo_rmse': shot_data['old_ppo_vs_target']['rmse'],
-                    'old_ppo_mae': shot_data['old_ppo_vs_target']['mae'],
-                    'old_ppo_cum_abs_error': shot_data['old_ppo_vs_target']['cumulative_absolute_error'],
-                    'old_ppo_cum_sq_error': shot_data['old_ppo_vs_target']['cumulative_squared_error'],
-                    'new_ppo_rmse': shot_data['new_ppo_vs_target']['rmse'],
-                    'new_ppo_mae': shot_data['new_ppo_vs_target']['mae'],
-                    'new_ppo_cum_abs_error': shot_data['new_ppo_vs_target']['cumulative_absolute_error'],
-                    'new_ppo_cum_sq_error': shot_data['new_ppo_vs_target']['cumulative_squared_error'],
-                    'rmse_improvement': shot_data['new_ppo_vs_target']['rmse'] - shot_data['old_ppo_vs_target']['rmse'],
-                    'mae_improvement': shot_data['new_ppo_vs_target']['mae'] - shot_data['old_ppo_vs_target']['mae']
-                }
+                # Basic info
+                row = {'shot_id': shot_data['shot_id']}
+
+                # Extract per-quantity metrics
+                old_rmses = shot_data['old_ppo_vs_target']['rmse_per_quantity']
+                old_maes = shot_data['old_ppo_vs_target']['mae_per_quantity']
+                new_rmses = shot_data['new_ppo_vs_target']['rmse_per_quantity']
+                new_maes = shot_data['new_ppo_vs_target']['mae_per_quantity']
+                
+                # Add per-quantity metrics to the row with specific column names
+                for i in range(len(old_rmses)):
+                    row[f'old_ppo_rmse_comp{i}'] = old_rmses[i]
+                    row[f'old_ppo_mae_comp{i}'] = old_maes[i]
+                    row[f'new_ppo_rmse_comp{i}'] = new_rmses[i]
+                    row[f'new_ppo_mae_comp{i}'] = new_maes[i]
+                    row[f'rmse_improvement_comp{i}'] = new_rmses[i] - old_rmses[i]
+                    row[f'mae_improvement_comp{i}'] = new_maes[i] - old_maes[i]
+
+                # Add cumulative and reward metrics
+                row['old_ppo_cum_abs_error'] = shot_data['old_ppo_vs_target']['cumulative_absolute_error']
+                row['old_ppo_cum_sq_error'] = shot_data['old_ppo_vs_target']['cumulative_squared_error']
+                row['new_ppo_cum_abs_error'] = shot_data['new_ppo_vs_target']['cumulative_absolute_error']
+                row['new_ppo_cum_sq_error'] = shot_data['new_ppo_vs_target']['cumulative_squared_error']
+                row['old_ppo_reward'] = shot_data['old_ppo_reward']
+                row['new_ppo_reward'] = shot_data['new_ppo_reward']
+                
                 df_data.append(row)
         
         df = pd.DataFrame(df_data)
@@ -186,45 +223,52 @@ def run(args=get_args()) -> None:
     controller = Controller(args)
     
     # Load new PPO data
-    new_ppo_data_path = os.path.join(os.path.dirname(__file__), args.new_ppo_data_path)
+    new_ppo_data_path = args.new_ppo_data_path
     new_ppo_data = load_new_ppo_data(new_ppo_data_path)
     
     # rollouts
     shot_list = env.get_eval_shot_list()
     quan_names, act_names = sa_processor.get_plot_names()
+    # MODIFICATION: Get number of quantities to track
+    num_quantities = len(quan_names)
 
     # Create log folder for comparison results with seed information
-    # Extract seed information from old actor path and new PPO data path
     old_actor_info = args.old_actor_path.split('/')[-1] if args.old_actor_path else "unknown_old"
     new_ppo_info = os.path.basename(os.path.dirname(args.new_ppo_data_path))
 
-    # Create a unique comparison identifier
     if args.comparison_name:
         comparison_id = args.comparison_name
     else:
         comparison_id = f"old_{old_actor_info}_vs_new_{new_ppo_info}_seed_{args.seed}"
 
-    log_folder = os.path.join(os.path.dirname(__file__), "results", "comparison", args.task, comparison_id)
+    log_folder = os.path.join(args.save_base_dir, "results", "comparison0", args.task, comparison_id)
     os.makedirs(log_folder, exist_ok=True)
 
     print(f"Comparison results will be saved to: {log_folder}")
 
-    # Storage for comparison results
+    # MODIFICATION: Storage for comparison results updated for per-quantity metrics
     comparison_results = {}
-    old_ppo_summary = {'total_shots': 0, 'total_rmse': 0, 'total_mae': 0, 'total_reward': 0}
-    new_ppo_summary = {'total_shots': 0, 'total_rmse': 0, 'total_mae': 0, 'total_reward': 0}
+    old_ppo_summary = {
+        'total_shots': 0, 
+        'total_rmse': np.zeros(num_quantities), 
+        'total_mae': np.zeros(num_quantities), 
+        'total_reward': 0
+    }
+    new_ppo_summary = {
+        'total_shots': 0, 
+        'total_rmse': np.zeros(num_quantities), 
+        'total_mae': np.zeros(num_quantities), 
+        'total_reward': 0
+    }
 
     for shot in shot_list:
-        # Check if new PPO data exists for this shot
         shot_key = f'shot_{shot}'
         if shot_key not in new_ppo_data:
             print(f"Warning: No new PPO data found for shot {shot}, skipping...")
             continue
             
-        # Run old PPO agent
         obs = env.reset(shot_id=shot)
         episode_reward, episode_length = 0, 0
-
         time_array = []
         target_quan_array, real_quan_array, old_ppo_quan_array, real_act_array, old_ppo_act_array = [], [], [], [], []
 
@@ -233,8 +277,6 @@ def run(args=get_args()) -> None:
             next_obs, actuators, reward, terminal, info = env.step(action, obs)
             episode_reward += reward
             episode_length += 1
-
-            # get quantities to plot
             cur_time = info["time_step"] - 1
             target_quan, real_quan, cur_quan, real_act, cur_act = sa_processor.get_plot_quantities(shot, cur_time, obs, action)
             time_array.append(cur_time)
@@ -243,28 +285,26 @@ def run(args=get_args()) -> None:
             old_ppo_quan_array.append(cur_quan)
             real_act_array.append(real_act)
             old_ppo_act_array.append(cur_act)
-
-            if terminal:
-                break
-
+            if terminal: break
             obs = next_obs
         
-        # Convert to numpy arrays
         target_quan_array = np.array(target_quan_array)
         real_quan_array = np.array(real_quan_array)
         old_ppo_quan_array = np.array(old_ppo_quan_array)
         old_ppo_act_array = np.array(old_ppo_act_array)
         time_array = np.array(time_array)
+
+        reconstruct_target_quan_array = reconstruct_profile_from_state(args.task, np.array(target_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
+        reconstruct_real_quan_array = reconstruct_profile_from_state(args.task, np.array(real_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
+        old_ppo_reconstruct_cur_quan_array = reconstruct_profile_from_state(args.task, np.array(old_ppo_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
         
-        # Get new PPO data
         new_ppo_quan_array = new_ppo_data[shot_key]['cur_quan_array']
         new_ppo_act_array = new_ppo_data[shot_key]['cur_act_array']
+        new_ppo_reconstruct_cur_quan_array = new_ppo_data[shot_key]['reconstruct_cur_quan_array']
         
-        # Calculate metrics
         old_ppo_metrics = calculate_tracking_metrics(target_quan_array, old_ppo_quan_array)
         new_ppo_metrics = calculate_tracking_metrics(target_quan_array, new_ppo_quan_array)
         
-        # Store comparison results
         comparison_results[shot_key] = {
             'shot_id': shot,
             'old_ppo_vs_target': old_ppo_metrics,
@@ -273,71 +313,82 @@ def run(args=get_args()) -> None:
             'new_ppo_reward': new_ppo_data[shot_key]['episode_reward']
         }
         
-        # Update summary statistics
+        # MODIFICATION: Update summary statistics with per-quantity metrics (element-wise addition)
         old_ppo_summary['total_shots'] += 1
-        old_ppo_summary['total_rmse'] += old_ppo_metrics['rmse']
-        old_ppo_summary['total_mae'] += old_ppo_metrics['mae']
+        old_ppo_summary['total_rmse'] += np.array(old_ppo_metrics['rmse_per_quantity'])
+        old_ppo_summary['total_mae'] += np.array(old_ppo_metrics['mae_per_quantity'])
         old_ppo_summary['total_reward'] += episode_reward
         
         new_ppo_summary['total_shots'] += 1
-        new_ppo_summary['total_rmse'] += new_ppo_metrics['rmse']
-        new_ppo_summary['total_mae'] += new_ppo_metrics['mae']
+        new_ppo_summary['total_rmse'] += np.array(new_ppo_metrics['rmse_per_quantity'])
+        new_ppo_summary['total_mae'] += np.array(new_ppo_metrics['mae_per_quantity'])
         new_ppo_summary['total_reward'] += new_ppo_data[shot_key]['episode_reward']
         
-        # Generate comparison plots
         plot_comparison_tracking_quantities(
             time_array, target_quan_array, real_quan_array, 
             old_ppo_quan_array, new_ppo_quan_array, 
             quan_names, shot, log_folder
         )
-        
+        plot_comparison_tracking_quantities_with_units(
+            time_array, reconstruct_target_quan_array, reconstruct_real_quan_array, 
+            old_ppo_reconstruct_cur_quan_array, new_ppo_reconstruct_cur_quan_array, 
+            args.task, shot, log_folder
+        )
         if args.plot_actuators:
             plot_comparison_actions(
                 time_array, real_act_array, old_ppo_act_array, 
                 new_ppo_act_array, act_names, shot, log_folder
             )
         
-        # Print comparison metrics
         print_comparison_metrics(shot, old_ppo_metrics, new_ppo_metrics)
 
     # Calculate and save summary metrics
     if old_ppo_summary['total_shots'] > 0:
+        total_shots = old_ppo_summary['total_shots']
         summary_metrics = {
             'old_ppo': {
-                'avg_rmse': old_ppo_summary['total_rmse'] / old_ppo_summary['total_shots'],
-                'avg_mae': old_ppo_summary['total_mae'] / old_ppo_summary['total_shots'],
-                'avg_reward': old_ppo_summary['total_reward'] / old_ppo_summary['total_shots']
+                'avg_rmse_per_quantity': (old_ppo_summary['total_rmse'] / total_shots).tolist(),
+                'avg_mae_per_quantity': (old_ppo_summary['total_mae'] / total_shots).tolist(),
+                'avg_reward': old_ppo_summary['total_reward'] / total_shots
             },
             'new_ppo': {
-                'avg_rmse': new_ppo_summary['total_rmse'] / new_ppo_summary['total_shots'],
-                'avg_mae': new_ppo_summary['total_mae'] / new_ppo_summary['total_shots'],
-                'avg_reward': new_ppo_summary['total_reward'] / new_ppo_summary['total_shots']
+                'avg_rmse_per_quantity': (new_ppo_summary['total_rmse'] / total_shots).tolist(),
+                'avg_mae_per_quantity': (new_ppo_summary['total_mae'] / total_shots).tolist(),
+                'avg_reward': new_ppo_summary['total_reward'] / total_shots
             }
         }
         
         comparison_results['summary'] = summary_metrics
         
-        # Generate summary plots
-        plot_metrics_comparison(comparison_results, log_folder)
-        plot_summary_metrics(summary_metrics, log_folder)
+        # Note: These plotting functions might need adjustment if they don't accept list-like metrics
+        #plot_metrics_comparison(comparison_results, log_folder)
+        #plot_summary_metrics(summary_metrics, log_folder)
         
-        # Print summary
-        print(f"\n{'='*50}")
-        print("COMPARISON SUMMARY")
-        print(f"{'='*50}")
-        print(f"Total shots compared: {old_ppo_summary['total_shots']}")
-        print(f"\nOld PPO Agent:")
-        print(f"  Average RMSE: {summary_metrics['old_ppo']['avg_rmse']:.4f}")
-        print(f"  Average MAE: {summary_metrics['old_ppo']['avg_mae']:.4f}")
-        print(f"  Average Reward: {summary_metrics['old_ppo']['avg_reward']:.3f}")
-        print(f"\nNew PPO Agent:")
-        print(f"  Average RMSE: {summary_metrics['new_ppo']['avg_rmse']:.4f}")
-        print(f"  Average MAE: {summary_metrics['new_ppo']['avg_mae']:.4f}")
-        print(f"  Average Reward: {summary_metrics['new_ppo']['avg_reward']:.3f}")
-        print(f"\nImprovement (New - Old):")
-        print(f"  RMSE: {summary_metrics['new_ppo']['avg_rmse'] - summary_metrics['old_ppo']['avg_rmse']:.4f}")
-        print(f"  MAE: {summary_metrics['new_ppo']['avg_mae'] - summary_metrics['old_ppo']['avg_mae']:.4f}")
-        print(f"  Reward: {summary_metrics['new_ppo']['avg_reward'] - summary_metrics['old_ppo']['avg_reward']:.3f}")
+        # MODIFICATION: Updated summary printing
+        print(f"\n{'='*60}")
+        print(" " * 20 + "COMPARISON SUMMARY")
+        print(f"{'='*60}")
+        print(f"Total shots compared: {total_shots}")
+        
+        old_avg_rmses = summary_metrics['old_ppo']['avg_rmse_per_quantity']
+        old_avg_maes = summary_metrics['old_ppo']['avg_mae_per_quantity']
+        new_avg_rmses = summary_metrics['new_ppo']['avg_rmse_per_quantity']
+        new_avg_maes = summary_metrics['new_ppo']['avg_mae_per_quantity']
+
+        print("\n--- Average Metrics Per Component Across All Shots ---")
+        for i in range(num_quantities):
+            print(f"  Component #{i} ({quan_names[i]}):")
+            print(f"    Old PPO  | Avg RMSE: {old_avg_rmses[i]:.4f}, Avg MAE: {old_avg_maes[i]:.4f}")
+            print(f"    New PPO  | Avg RMSE: {new_avg_rmses[i]:.4f}, Avg MAE: {new_avg_maes[i]:.4f}")
+            print(f"    Improve. | Avg RMSE: {new_avg_rmses[i] - old_avg_rmses[i]:+.4f}, Avg MAE: {new_avg_maes[i] - old_avg_maes[i]:+.4f}")
+
+        print("\n--- Average Reward Across All Shots ---")
+        old_avg_reward = summary_metrics['old_ppo']['avg_reward']
+        new_avg_reward = summary_metrics['new_ppo']['avg_reward']
+        print(f"  Old PPO Average Reward: {old_avg_reward:.3f}")
+        print(f"  New PPO Average Reward: {new_avg_reward:.3f}")
+        print(f"  Improvement in Reward: {new_avg_reward - old_avg_reward:+.3f}")
+        print(f"{'='*60}")
 
     # Save comparison results
     save_comparison_results(comparison_results, log_folder)

@@ -136,7 +136,7 @@ class SA_processor: # used for both training and evaluation
         reward = reward_function.get_reward(next_state[:, self.idx_list],None,self.info,self.idx_list,targets)
         return reward
         # this design is flexible - we are using "-mse" as the reaward
-        # return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
+        #return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
 
     def get_plot_quantities(self, shot_id, time_step, state, action):
         """

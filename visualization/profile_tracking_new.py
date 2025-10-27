@@ -29,18 +29,27 @@ def get_args():
 
     # controller settings, of which the core is an NN actor
     #parser.add_argument("--actor_path", type=str, default="log/dens/cql/seed_1&timestamp_25-1004-113803", help="Path to the actor checkpoint")
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/dens_reset/dens_ppo_seed1/lr0.0002_steps2048_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_timesteps1003000_hidden250x250", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps800000_pol250x250_val250x250", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
 
-    parser.add_argument("--save_dir_name", type=str, default="ppo_0.5_256_1_new_reset", help="保存结果的子文件夹名称（位于 visualization/results/ppo/ 下）")
+    parser.add_argument("--save_dir_name", type=str, default="dens_network", help="保存结果的子文件夹名称")
+    parser.add_argument("--output_base_dir", type=str, default="/home/scratch/jiayuc2/eval_bao", help="输出文件的基础目录")
     return parser.parse_args()
 
 
 def calculate_tracking_metrics(target_array, current_array):
-    """计算跟踪性能指标"""
+    """计算跟踪性能指标
+
+    Args:
+        target_array: shape (time_steps, num_dimensions)
+        current_array: shape (time_steps, num_dimensions)
+
+    Returns:
+        metrics: 包含总体指标和每个维度指标的字典
+    """
     target_array = np.array(target_array)
     current_array = np.array(current_array)
 
@@ -48,6 +57,7 @@ def calculate_tracking_metrics(target_array, current_array):
     error = target_array - current_array
     abs_error = np.abs(error)
 
+    # 总体指标（所有维度平均）
     metrics = {
         # 1. 均方根误差 (RMSE)
         'rmse': float(np.sqrt(np.mean(error**2))),
@@ -61,6 +71,33 @@ def calculate_tracking_metrics(target_array, current_array):
         # 4. 累计平方误差
         'cumulative_squared_error': float(np.sum(error**2))
     }
+
+    # 每个维度的指标
+    num_dimensions = target_array.shape[1] if len(target_array.shape) > 1 else 1
+
+    if num_dimensions > 1:
+        metrics['per_component'] = {}
+        for dim in range(num_dimensions):
+            component_name = f'component{dim + 1}'
+            error_dim = error[:, dim]
+            abs_error_dim = abs_error[:, dim]
+
+            metrics['per_component'][component_name] = {
+                'rmse': float(np.sqrt(np.mean(error_dim**2))),
+                'mae': float(np.mean(abs_error_dim)),
+                'cumulative_absolute_error': float(np.sum(abs_error_dim)),
+                'cumulative_squared_error': float(np.sum(error_dim**2))
+            }
+    else:
+        # 如果只有一个维度，也添加component1
+        metrics['per_component'] = {
+            'component1': {
+                'rmse': metrics['rmse'],
+                'mae': metrics['mae'],
+                'cumulative_absolute_error': metrics['cumulative_absolute_error'],
+                'cumulative_squared_error': metrics['cumulative_squared_error']
+            }
+        }
 
     return metrics
 
@@ -87,30 +124,48 @@ def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
 def save_tracking_results(all_results, log_folder):
     """
     Save tracking results to JSON and CSV files
-    
+
     Args:
         all_results: Dictionary containing all shot results
         log_folder: Directory to save files
     """
-  
+
     shot_results = [v for k, v in all_results.items() if k.startswith('shot_')]
     num_shots = len(shot_results)
-    
+
     if num_shots > 0:
+        # 计算总体平均指标
         summary_metrics = {
             'total_shots': num_shots,
             'avg_rmse': sum(shot['tracking_metrics']['rmse'] for shot in shot_results) / num_shots,
             'avg_mae': sum(shot['tracking_metrics']['mae'] for shot in shot_results) / num_shots,
+            'avg_cumulative_absolute_error': sum(shot['tracking_metrics']['cumulative_absolute_error'] for shot in shot_results) / num_shots,
             'avg_reward': sum(shot['episode_reward'] for shot in shot_results) / num_shots,
             'avg_length': sum(shot['episode_length'] for shot in shot_results) / num_shots
         }
+
+        # 计算每个维度的平均指标
+        if 'per_component' in shot_results[0]['tracking_metrics']:
+            component_names = list(shot_results[0]['tracking_metrics']['per_component'].keys())
+            summary_metrics['per_component'] = {}
+
+            for comp_name in component_names:
+                summary_metrics['per_component'][comp_name] = {
+                    'avg_rmse': sum(shot['tracking_metrics']['per_component'][comp_name]['rmse']
+                                   for shot in shot_results) / num_shots,
+                    'avg_mae': sum(shot['tracking_metrics']['per_component'][comp_name]['mae']
+                                  for shot in shot_results) / num_shots,
+                    'avg_cumulative_absolute_error': sum(shot['tracking_metrics']['per_component'][comp_name]['cumulative_absolute_error']
+                                                         for shot in shot_results) / num_shots,
+                }
+
         all_results['summary'] = summary_metrics
-    
+
     # Save results to JSON file
     results_file = os.path.join(log_folder, 'tracking_results.json')
     with open(results_file, 'w') as f:
         json.dump(all_results, f, indent=2)
-    
+
     # Save to CSV file
     try:
         import pandas as pd
@@ -126,28 +181,46 @@ def save_tracking_results(all_results, log_folder):
                     'cumulative_absolute_error': shot_data['tracking_metrics']['cumulative_absolute_error'],
                     'cumulative_squared_error': shot_data['tracking_metrics']['cumulative_squared_error']
                 }
+
+                # 添加每个维度的指标
+                if 'per_component' in shot_data['tracking_metrics']:
+                    for comp_name, comp_metrics in shot_data['tracking_metrics']['per_component'].items():
+                        row[f'{comp_name}_rmse'] = comp_metrics['rmse']
+                        row[f'{comp_name}_mae'] = comp_metrics['mae']
+                        row[f'{comp_name}_cumulative_absolute_error'] = comp_metrics['cumulative_absolute_error']
+
                 df_data.append(row)
-        
+
         df = pd.DataFrame(df_data)
         csv_file = os.path.join(log_folder, 'tracking_results.csv')
         df.to_csv(csv_file, index=False)
-        
+
         print(f"\nResults saved to:")
         print(f"JSON format: {results_file}")
         print(f"CSV format: {csv_file}")
-        
+
     except ImportError:
         print(f"\nResults saved to:")
         print(f"JSON format: {results_file}")
         print("Note: pandas not installed, cannot save CSV format")
-    
+
     if 'summary' in all_results:
         summary = all_results['summary']
         print(f"\nOverall Statistics:")
         print(f"Average RMSE: {summary['avg_rmse']:.4f}")
         print(f"Average MAE: {summary['avg_mae']:.4f}")
+        print(f"Average Cumulative Absolute Error: {summary['avg_cumulative_absolute_error']:.4f}")
         print(f"Average Reward: {summary['avg_reward']:.3f}")
         print(f"Average Length: {summary['avg_length']:.1f}")
+
+        # 打印每个维度的平均指标
+        if 'per_component' in summary:
+            print(f"\nPer-Component Average Statistics:")
+            for comp_name, comp_metrics in summary['per_component'].items():
+                print(f"  {comp_name}:")
+                print(f"    Average RMSE: {comp_metrics['avg_rmse']:.4f}")
+                print(f"    Average MAE: {comp_metrics['avg_mae']:.4f}")
+                print(f"    Average Cumulative Absolute Error: {comp_metrics['avg_cumulative_absolute_error']:.4f}")
 
 
 def run(args=get_args()) -> None:
@@ -174,14 +247,23 @@ def run(args=get_args()) -> None:
     # rollouts
     shot_list = env.get_eval_shot_list()
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
-    
-    # actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    # log_folder = os.path.join(os.path.dirname(__file__), "results", actor_info[1], actor_info[2], actor_info[3])
-        
-    base_results_dir = os.path.join(os.path.dirname(__file__), "results", "ppo")
-    log_folder = os.path.join(base_results_dir, args.save_dir_name)
-    
+
+    # 从 actor_path 中提取路径信息来构建保存目录
+    # 提取 actor_path 中从 test_bao 之后的所有路径部分
+    actor_path_parts = args.actor_path.split('/')
+    # 找到包含实验信息的路径部分（从 test_bao 后开始）
+    try:
+        test_bao_idx = actor_path_parts.index('dens_ppo_seed1')
+        experiment_path = '/'.join(actor_path_parts[test_bao_idx + 1:])
+    except ValueError:
+        # 如果没有找到 test_bao，使用最后两个路径部分
+        experiment_path = '/'.join(actor_path_parts[-2:]) if len(actor_path_parts) >= 2 else actor_path_parts[-1]
+
+    # 构建最终的保存路径
+    log_folder = os.path.join(args.output_base_dir, args.save_dir_name, experiment_path)
+
     os.makedirs(log_folder, exist_ok=True)
+    print(f"\nResults will be saved to: {log_folder}")
 
     for shot in shot_list:
         obs = env.reset(shot_id=shot)
