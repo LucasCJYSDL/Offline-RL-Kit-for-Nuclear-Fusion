@@ -7,7 +7,7 @@ import os
 class TensorBoardLoggingCallback(BaseCallback):
     """
     Simplified TensorBoard monitoring callback
-    只使用 SB3 标准的 rollout/ep_rew_mean 和 rollout/ep_len_mean
+    Only uses SB3 standard rollout/ep_rew_mean and rollout/ep_len_mean
     """
     def __init__(self, verbose=0, log_freq=100):
         super().__init__(verbose)
@@ -22,7 +22,7 @@ class TensorBoardLoggingCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         """Monitoring logic called at each step"""
-        # 只记录基本的训练进度信息
+         # Only record basic training progress information
         if self.n_calls % self.log_freq == 0:
             self.logger.record("train/timesteps", self.num_timesteps)
             self.logger.record("train/fps", self.num_timesteps / (time.time() - self.start_time))
