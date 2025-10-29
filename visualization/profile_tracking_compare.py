@@ -63,30 +63,30 @@ def get_args():
 # MODIFIED FUNCTION
 def calculate_tracking_metrics(target_array, current_array):
     """
-    计算每个物理量独立的跟踪性能指标
+    Calculate independent tracking performance metrics for each physical quantity
     """
     target_array = np.array(target_array)
     current_array = np.array(current_array)
 
-    # 基本误差计算
+    # Basic error calculation
     error = target_array - current_array
     abs_error = np.abs(error)
 
-    # 沿着时间轴(axis=0)计算每个物理量(component)的MSE和MAE
+    # Calculate MSE and MAE for each physical quantity (component) along time axis (axis=0)
     mse_per_quantity = np.mean(error**2, axis=0)
     mae_per_quantity = np.mean(abs_error, axis=0)
 
-    # 对每个分量的MSE开方
+    # Take square root of MSE for each component
     rmse_per_quantity = np.sqrt(mse_per_quantity)
 
     metrics = {
-        # 返回一个列表, 每个元素对应一个物理量的RMSE
+        # Return a list, each element corresponds to RMSE of one physical quantity
         'rmse_per_quantity': rmse_per_quantity.tolist(),
 
-        # 返回一个列表, 每个元素对应一个物理量的MAE
+        # Return a list, each element corresponds to MAE of one physical quantity
         'mae_per_quantity': mae_per_quantity.tolist(),
 
-        # 累计误差仍然是总的聚合值
+        # Cumulative errors are still total aggregated values
         'cumulative_absolute_error': float(np.sum(abs_error)),
         'cumulative_squared_error': float(np.sum(error**2))
     }
@@ -96,18 +96,18 @@ def calculate_tracking_metrics(target_array, current_array):
 
 # MODIFIED FUNCTION
 def print_comparison_metrics(shot_id, old_metrics, new_metrics):
-    """打印比较指标, 逐个分量显示"""
+    """Print comparison metrics, showing each component separately"""
     print(f"\nShot #{shot_id} - Metrics Comparison:")
-    
+
     num_quantities = len(old_metrics['rmse_per_quantity'])
-    
+
     for i in range(num_quantities):
         print(f"  Component #{i}:")
         old_rmse = old_metrics['rmse_per_quantity'][i]
         new_rmse = new_metrics['rmse_per_quantity'][i]
         old_mae = old_metrics['mae_per_quantity'][i]
         new_mae = new_metrics['mae_per_quantity'][i]
-        
+
         print(f"    Old PPO  | RMSE: {old_rmse:.4f}, MAE: {old_mae:.4f}")
         print(f"    New PPO  | RMSE: {new_rmse:.4f}, MAE: {new_mae:.4f}")
         print(f"    Improve. | RMSE: {new_rmse - old_rmse:+.4f}, MAE: {new_mae - old_mae:+.4f}")
@@ -229,7 +229,7 @@ def run(args=get_args()) -> None:
     # rollouts
     shot_list = env.get_eval_shot_list()
     quan_names, act_names = sa_processor.get_plot_names()
-    # MODIFICATION: Get number of quantities to track
+    # Get number of quantities to track
     num_quantities = len(quan_names)
 
     # Create log folder for comparison results with seed information
@@ -246,18 +246,18 @@ def run(args=get_args()) -> None:
 
     print(f"Comparison results will be saved to: {log_folder}")
 
-    # MODIFICATION: Storage for comparison results updated for per-quantity metrics
+    # Storage for comparison results updated for per-quantity metrics
     comparison_results = {}
     old_ppo_summary = {
-        'total_shots': 0, 
-        'total_rmse': np.zeros(num_quantities), 
-        'total_mae': np.zeros(num_quantities), 
+        'total_shots': 0,
+        'total_rmse': np.zeros(num_quantities),
+        'total_mae': np.zeros(num_quantities),
         'total_reward': 0
     }
     new_ppo_summary = {
-        'total_shots': 0, 
-        'total_rmse': np.zeros(num_quantities), 
-        'total_mae': np.zeros(num_quantities), 
+        'total_shots': 0,
+        'total_rmse': np.zeros(num_quantities),
+        'total_mae': np.zeros(num_quantities),
         'total_reward': 0
     }
 
@@ -313,12 +313,12 @@ def run(args=get_args()) -> None:
             'new_ppo_reward': new_ppo_data[shot_key]['episode_reward']
         }
         
-        # MODIFICATION: Update summary statistics with per-quantity metrics (element-wise addition)
+        # Update summary statistics with per-quantity metrics (element-wise addition)
         old_ppo_summary['total_shots'] += 1
         old_ppo_summary['total_rmse'] += np.array(old_ppo_metrics['rmse_per_quantity'])
         old_ppo_summary['total_mae'] += np.array(old_ppo_metrics['mae_per_quantity'])
         old_ppo_summary['total_reward'] += episode_reward
-        
+
         new_ppo_summary['total_shots'] += 1
         new_ppo_summary['total_rmse'] += np.array(new_ppo_metrics['rmse_per_quantity'])
         new_ppo_summary['total_mae'] += np.array(new_ppo_metrics['mae_per_quantity'])
@@ -363,13 +363,13 @@ def run(args=get_args()) -> None:
         # Note: These plotting functions might need adjustment if they don't accept list-like metrics
         #plot_metrics_comparison(comparison_results, log_folder)
         #plot_summary_metrics(summary_metrics, log_folder)
-        
-        # MODIFICATION: Updated summary printing
+
+        # Updated summary printing
         print(f"\n{'='*60}")
         print(" " * 20 + "COMPARISON SUMMARY")
         print(f"{'='*60}")
         print(f"Total shots compared: {total_shots}")
-        
+
         old_avg_rmses = summary_metrics['old_ppo']['avg_rmse_per_quantity']
         old_avg_maes = summary_metrics['old_ppo']['avg_mae_per_quantity']
         new_avg_rmses = summary_metrics['new_ppo']['avg_rmse_per_quantity']

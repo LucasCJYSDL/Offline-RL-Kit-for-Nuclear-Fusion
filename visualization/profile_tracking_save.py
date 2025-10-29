@@ -11,7 +11,6 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from visualization.controller_new import Controller
-from visualization.controller_best import ControllerBest
 from visualization.plotter import plot_tracking_quantities, plot_actions, plot_tracking_quantities_with_units
 from  envs.utils.profile_util import reconstruct_profile_from_state
 
@@ -44,25 +43,25 @@ def get_args():
 
 
 def calculate_tracking_metrics(target_array, current_array):
-    """计算跟踪性能指标"""
+    """Calculate tracking performance metrics"""
     target_array = np.array(target_array)
     current_array = np.array(current_array)
 
-    # 基本误差计算
+    # Basic error calculation
     error = target_array - current_array
     abs_error = np.abs(error)
 
     metrics = {
-        # 1. 均方根误差 (RMSE)
+        # 1. Root Mean Square Error (RMSE)
         'rmse': float(np.sqrt(np.mean(error**2))),
 
-        # 2. 平均绝对误差 (MAE)
+        # 2. Mean Absolute Error (MAE)
         'mae': float(np.mean(abs_error)),
 
-        # 3. 累计绝对误差
+        # 3. Cumulative Absolute Error
         'cumulative_absolute_error': float(np.sum(abs_error)),
 
-        # 4. 累计平方误差
+        # 4. Cumulative Squared Error
         'cumulative_squared_error': float(np.sum(error**2))
     }
 
@@ -70,12 +69,12 @@ def calculate_tracking_metrics(target_array, current_array):
 
 
 def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
-    """打印跟踪指标"""
-    print(f"\nShot #{shot_id} - 回合奖励: {episode_reward:.3f}, 长度: {episode_length}")
+    """Print tracking metrics"""
+    print(f"\nShot #{shot_id} - Episode Reward: {episode_reward:.3f}, Length: {episode_length}")
     print(f"  RMSE: {metrics['rmse']:.4f}")
     print(f"  MAE: {metrics['mae']:.4f}")
-    print(f"  累计绝对误差: {metrics['cumulative_absolute_error']:.2f}")
-    print(f"  累计平方误差: {metrics['cumulative_squared_error']:.2f}")
+    print(f"  Cumulative Absolute Error: {metrics['cumulative_absolute_error']:.2f}")
+    print(f"  Cumulative Squared Error: {metrics['cumulative_squared_error']:.2f}")
 
 
 def save_tracking_results(all_results, log_folder):
@@ -198,8 +197,7 @@ def run(args=get_args()) -> None:
     env.seed(args.seed)
 
     # load up the actor
-    #controller = Controller(args)
-    controller = ControllerBest(args)
+    controller = Controller(args)
     all_results = {}
     shot_data_dict = {}  # For saving shot data
     
@@ -250,8 +248,8 @@ def run(args=get_args()) -> None:
         reconstruct_target_quan_array = np.array(reconstruct_target_quan_array)
         reconstruct_cur_quan_array = np.array(reconstruct_cur_quan_array)
         time_array = np.array(time_array)
-        
-        # 计算量化指标
+
+        # Calculate quantitative metrics
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
         all_results[f'shot_{shot}'] = {
             'shot_id': shot,

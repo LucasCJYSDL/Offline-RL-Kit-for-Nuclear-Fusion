@@ -8,7 +8,7 @@ import torch
 import pickle
 
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
-from rl_preparation.state_actuator_spaces_new import ( 
+from rl_preparation.state_actuator_spaces import ( 
     reward_function,
 )
 from rl_preparation.process_raw_data import raw_data_dir

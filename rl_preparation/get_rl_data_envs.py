@@ -7,7 +7,7 @@ import pickle
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from rl_preparation.state_actuator_spaces_new import ( 
+from rl_preparation.state_actuator_spaces import ( 
     state_names_to_idxs, 
     actuator_names_to_idxs, 
     get_target_indices, 

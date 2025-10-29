@@ -10,10 +10,10 @@ import gymnasium as gym
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
+from stable_baselines3.common.callbacks import CallbackList
 from offlinerlkit.modules import EnsembleDynamicsModel
 from offlinerlkit.dynamics import EnsembleDynamics
-from offlinerlkit.policy.model_free.ppo import PPOPolicy, ConvertAndSaveCallback
+from offlinerlkit.policy.model_free.ppo import PPOPolicy, BestModelConvertCallback
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from offlinerlkit.callbacks import TensorBoardLoggingCallback, FusionSpecificCallback, TrainingProgressCallback
@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument("--algo-name", type=str, default="ppo")
     
 
-    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network", 
+    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/test", 
                        help="Specify output directory path, use default path if not specified")
     # parser.add_argument("--output-dir", type=str, default=None, 
     #                     help="Specify output directory path, use default path if not specified")
@@ -48,10 +48,10 @@ def get_args():
                        help="Value network hidden layer dimensions")
     
     # training parameters
-    parser.add_argument("--total-timesteps", type=int, default=800_000)#1500_000
-    parser.add_argument("--eval-freq", type=int, default=10000)
+    parser.add_argument("--total-timesteps", type=int, default=5_010)#1500_000
+    parser.add_argument("--eval-freq", type=int, default=2_400)
     parser.add_argument("--eval-episodes", type=int, default=6)
-    parser.add_argument("--save-freq", type=int, default=10000)
+    parser.add_argument("--save-freq", type=int, default=2_400)
     
     # environment parameter
     parser.add_argument("--max-episode-length", type=int, default=150) #200
@@ -60,181 +60,90 @@ def get_args():
     parser.add_argument("--max_start_idx",  type=int, default=20)
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="dens") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=5)
+    parser.add_argument("--cuda_id", type=int, default=3)
     return parser.parse_args()
-
+    
+#action_space
 class GymnasiumWrapper(gym.Env):
     """
     self environment -> Gymnasium compatiable
     """
-    def __init__(self, custom_env):
+    def __init__(self, custom_env,action_dim, obs_dim):
         super().__init__()
         self.env = custom_env
 
+        # Set up the observation space 
 
-        obs_sample = custom_env.reset()
-        if isinstance(obs_sample, tuple):
-            obs_sample = obs_sample[0]  # 处理新版gym返回(obs, info)的情况
-
-    
-        if hasattr(obs_sample, 'shape') and len(obs_sample.shape) > 1:
-            obs_sample = obs_sample.flatten()
-
-        obs_shape = obs_sample.shape if hasattr(obs_sample, 'shape') else (len(obs_sample),)
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=obs_shape, dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
 
-        if hasattr(custom_env, 'action_space'):
-            self.action_space = custom_env.action_space
-        else:
-            # 假设连续动作空间
-            action_dim = 4  # 根据你的设置
-            self.action_space = gym.spaces.Box(
+        self.action_space = gym.spaces.Box(
                 low=-1.0, high=1.0, shape=(action_dim,), dtype=np.float32
             )
 
     def reset(self, seed=None, options=None):
-        """重置环境"""
-        if hasattr(self.env, 'seed') and seed is not None:
-            self.env.seed(seed)
-
+        
         obs = self.env.reset()
-        if isinstance(obs, tuple):
-            obs, info = obs
-        else:
-            info = {}
+        info = {}
 
-        # 处理torch.Tensor观测
-        if hasattr(obs, 'cpu'):  # 是torch.Tensor
-            obs = obs.cpu().numpy()
-
-        # 确保观测形状正确 - 展平为1维
-        if hasattr(obs, 'shape') and len(obs.shape) > 1:
-            obs = obs.flatten()
+        # Handle torch.Tensor observations and flatten them to 1D
+        obs = obs.cpu().numpy().flatten()
 
         return obs, info
 
     def step(self, action):
-        """执行动作"""
-        # 确保动作有正确的形状 - NFBaseEnv期望批次维度
         if len(action.shape) == 1:
-            action = action.reshape(1, -1)  # 添加批次维度
-
+            action = action.reshape(1, -1)  # Add batch dimension (1, action_dim)
         result = self.env.step(action)
-        if len(result) == 4:
-            # 旧格式: (obs, reward, done, info)
-            obs, reward, done, info = result
+        # Old format: (obs, reward, done, info)
+        obs, reward, done, info = result
 
-            # 处理torch.Tensor观测
-            if hasattr(obs, 'cpu'):  # 是torch.Tensor
-                obs = obs.cpu().numpy()
+        # Handle torch.Tensor observations and flatten them to 1D
+        obs = obs.cpu().numpy().flatten()
 
-            # 确保观测形状正确
-            if hasattr(obs, 'shape') and len(obs.shape) > 1:
-                obs = obs.flatten()  
 
-            # 确保reward是标量
-            if hasattr(reward, '__len__') and len(reward) == 1:
-                reward = float(reward[0])
-            elif hasattr(reward, '__len__'):
-                reward = float(reward.sum()) 
-            else:
-                reward = float(reward)
-
-            # 确保done是标量
-            if hasattr(done, '__len__'):
-                done = bool(done.any())  # 如果任何一个为True，则为True
-            else:
-                done = bool(done)
-
-            return obs, reward, done, False, info  # 添加truncated
-        else:
-            # 新格式: (obs, reward, terminated, truncated, info)
-            obs, reward, terminated, truncated, info = result
-
-            # 处理torch.Tensor观测
-            if hasattr(obs, 'cpu'):  # 是torch.Tensor
-                obs = obs.cpu().numpy()
-
-            # 确保观测形状正确
-            if hasattr(obs, 'shape') and len(obs.shape) > 1:
-                obs = obs.flatten()  # 展平多维观测
-
-            # 确保reward是标量
-            if hasattr(reward, '__len__') and len(reward) == 1:
-                reward = float(reward[0])
-            elif hasattr(reward, '__len__'):
-                reward = float(reward.sum())  # 如果是多维，求和
-            else:
-                reward = float(reward)
-
-            # 确保terminated和truncated是标量
-            if hasattr(terminated, '__len__'):
-                terminated = bool(terminated.any())
-            else:
-                terminated = bool(terminated)
-
-            if hasattr(truncated, '__len__'):
-                truncated = bool(truncated.any())
-            else:
-                truncated = bool(truncated)
-
-            return obs, reward, terminated, truncated, info
-
-    def render(self, mode='human'):
-        """渲染环境"""
-        if hasattr(self.env, 'render'):
-            return self.env.render()
-        return None
-
-    def close(self):
-        """关闭环境"""
-        if hasattr(self.env, 'close'):
-            self.env.close()
+        return obs, reward, done, False, info  # add truncated
 
 
 
 
 def train(args=get_args()):
-    # 设置设备
-    args.device = torch.device(f"cuda:{args.cuda_id}" if torch.cuda.is_available() else "cpu")
-    print(f"使用设备: {args.device}")
 
-    # 设置随机种子
+    args.device = torch.device(f"cuda:{args.cuda_id}" if torch.cuda.is_available() else "cpu")
+    print(f"Use device: {args.device}")
+
+    # seed
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
     
-    # 加载数据和环境
-    print("正在加载数据和环境...")
+    # offline rl data and env
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(
         args.env, args.task, args.device
     )
     
-    # 获取状态和动作维度
     args.obs_shape = (offline_data['observations'].shape[1],)
     args.action_dim = offline_data['actions'].shape[1]
     args.state_dim = len(offline_data['state_idxs'])
     args.control_dim = len(offline_data['action_idxs'])
     
-    print(f"观测维度: {args.obs_shape}")
-    print(f"状态维度: {args.state_dim}")
-    print(f"动作维度: {args.action_dim}")
-    print(f"控制维度: {args.control_dim}")
+    print(f"observation dimension: {args.obs_shape}")
+    print(f"state dimension: {args.state_dim}")
+    print(f"action dimension: {args.action_dim}")
+    print(f"control dimension: {args.control_dim}")
     
-    # 创建动力学模型
-    print("正在加载动力学模型...")
+    # create dynamics
     dynamics_model = EnsembleDynamicsModel(
         model_path=training_dyn_model_dir,
         device=args.device
     )
     
-    # 创建动力学包装器
+
     termination_fn = env.is_done
     reward_fn = sa_processor.get_reward_new
     dynamics = EnsembleDynamics(
@@ -244,15 +153,13 @@ def train(args=get_args()):
         penalty_coef=0.0  
     )
     
-    # 创建PPO策略
-    print("正在创建PPO策略...")
+    # create PPO policy
+    print("Creating PPO policy...")
 
-    # 调整PPO参数以确保callbacks能正常工作
-    # 减小n_steps以便在较短的训练中能触发多次callbacks
-    adjusted_n_steps = min(args.n_steps, args.total_timesteps // 4)  # 确保至少有4次rollout
-    adjusted_n_steps = max(adjusted_n_steps, 256)  # 但不能太小
+    # Adjust PPO parameters to ensure callbacks can work correctly
+    adjusted_n_steps = min(args.n_steps, args.total_timesteps // 4)  # Ensure at least 4 rollouts
+    adjusted_n_steps = max(adjusted_n_steps, 256)  
 
-    print(f"调整n_steps从{args.n_steps}到{adjusted_n_steps}以适应总步数{args.total_timesteps}")
 
     if args.output_dir is not None:
         base_dir = args.output_dir
@@ -305,7 +212,7 @@ def train(args=get_args()):
 
     policy.env.max_episode_length = args.max_episode_length
 
-    # 创建logger配置
+    # Create logger configuration
     output_config = {
         "consoleout_backup": "stdout",
         "policy_training_progress": "csv",
@@ -313,19 +220,22 @@ def train(args=get_args()):
     }
     logger = Logger(output_dir, output_config)
     
-    print(f"日志目录: {output_dir}")
+    print(f"output direction: {output_dir}")
 
-    print("开始训练...")
-    print(f"总训练步数: {args.total_timesteps}")
-    print(f"评估频率: {args.eval_freq}")
-    print(f"保存频率: {args.save_freq}")
+    print("Starting training...")
+    print(f"total_timesteps: {args.total_timesteps}")
+    print(f"evaluation frequency: {args.eval_freq}")
+    print(f"save frequency: {args.save_freq}")
 
-    # 创建评估环境（使用真实环境base_env或profile_control_env）
-    print("正在创建评估环境...")
-    eval_env_raw = env  # 使用真实环境进行评估
-    eval_env = GymnasiumWrapper(eval_env_raw)
+    print("creating evaluation environment...")
+    eval_env_raw = env  
 
-    # 使用Monitor包装器来避免SB3的警告，并确保观测空间一致性
+    obs_dim =  offline_data['observations'].shape[1]
+    action_dim = offline_data['act_dim']
+
+    eval_env = GymnasiumWrapper(eval_env_raw, action_dim=action_dim, obs_dim=obs_dim)
+
+    # Use Monitor wrapper to avoid SB3 warnings and ensure observation space consistency
     from stable_baselines3.common.monitor import Monitor
     eval_env = Monitor(eval_env)
 
@@ -350,49 +260,29 @@ def train(args=get_args()):
     )
     callbacks.append(progress_callback)
 
-    # 评估回调
+    # evaluation callback
     if args.eval_freq > 0:
-        eval_callback = EvalCallback(
-            eval_env,
-            best_model_save_path=os.path.join(output_dir, "best_model"),
-            log_path=os.path.join(output_dir, "evaluations"),
-            eval_freq=args.eval_freq,
+        best_model_convert_callback = BestModelConvertCallback(
+            eval_env=eval_env,
+            save_path=os.path.join(output_dir, "checkpoint"),
+            pol_hidden_dims=args.pol_hidden_dims,
+            val_hidden_dims=args.val_hidden_dims,
             n_eval_episodes=args.eval_episodes,
+            eval_freq=args.eval_freq,
+            log_path=os.path.join(output_dir, "evaluations"),
             deterministic=True,
             render=False,
             verbose=1
         )
-        callbacks.append(eval_callback)
-        print(f"评估回调已配置: 每{args.eval_freq}步评估{args.eval_episodes}个episodes")
+        callbacks.append(best_model_convert_callback)
+        print(f"Best model checkpoint callback configured: Evaluating every {args.eval_freq} steps for {args.eval_episodes} episodes, saving best model to checkpoint/policy.pth")
 
-    # 检查点保存回调
-    if args.save_freq > 0:
-        checkpoint_callback = CheckpointCallback(
-            save_freq=args.save_freq,
-            save_path=os.path.join(output_dir, "checkpoints"),
-            name_prefix="ppo_model",
-            verbose=1
-        )
-        callbacks.append(checkpoint_callback)
-        print(f"检查点回调已配置: 每{args.save_freq}步保存模型")
 
-    # 权重转换和保存回调
-    convert_save_callback = ConvertAndSaveCallback(
-        save_path=os.path.join(output_dir, "checkpoint"),
-        save_freq=args.save_freq,
-        #hidden_dims=args.hidden_dims,
-        pol_hidden_dims=args.pol_hidden_dims,  
-        val_hidden_dims=args.val_hidden_dims,  
-        verbose=1
-    )
-    callbacks.append(convert_save_callback)
-    print("权重转换回调已配置")
 
-    # 组合所有callbacks
+    # combine callbacks
     callback_list = CallbackList(callbacks) if callbacks else None
-    print(f"总共配置了{len(callbacks)}个callbacks")
 
-    # 训练循环
+    # Training loop
     start_time = time.time()
 
     try:
@@ -401,23 +291,23 @@ def train(args=get_args()):
             callback=callback_list,
             progress_bar=True
         )
-        print("训练成功完成")
+        print("")
     except Exception as e:
-        print(f"训练过程中出错: {e}")
+        print(f"Error during training: {e}")
         import traceback
         traceback.print_exc()
 
-    # 训练完成
+    # Training complete
     total_time = time.time() - start_time
-    print(f"总训练时间: {total_time:.2f}秒")
+    print(f"total time: {total_time:.2f}seconds")
 
-    # 保存最终模型
+    # Save the final model
     final_model_path = os.path.join(output_dir, "model", "policy")
     os.makedirs(os.path.dirname(final_model_path), exist_ok=True)
     policy.save(final_model_path)
 
     logger.close()
-    print("训练完成！")
+    print("# training complete!")
 
 
 if __name__ == "__main__":

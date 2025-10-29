@@ -10,15 +10,15 @@ from stable_baselines3 import PPO
 
 def convert_sb3_to_offlinerl_format(sb3_state_dict: dict, pol_hidden_dims: list, val_hidden_dims: list) -> dict:
     """
-    将 SB3 的 state_dict 转换为 offlinerlkit 格式
-    
+    Convert SB3 state_dict to offlinerlkit format
+
     Args:
-        sb3_state_dict: SB3 模型的 state_dict (来自 model.policy.state_dict())
-        pol_hidden_dims: Policy network 的隐藏层维度列表
-        val_hidden_dims: Value network 的隐藏层维度列表
-    
+        sb3_state_dict: SB3 model's state_dict (from model.policy.state_dict())
+        pol_hidden_dims: List of hidden layer dimensions for policy network
+        val_hidden_dims: List of hidden layer dimensions for value network
+
     Returns:
-        offlinerl_state_dict: 转换后的 state_dict
+        offlinerl_state_dict: Converted state_dict
     """
     offlinerl_state_dict = {}
     
@@ -41,19 +41,19 @@ def convert_sb3_to_offlinerl_format(sb3_state_dict: dict, pol_hidden_dims: list,
         offlinerl_state_dict['actor.dist_net.mu.weight'] = sb3_state_dict['action_net.weight']
         offlinerl_state_dict['actor.dist_net.mu.bias'] = sb3_state_dict['action_net.bias']
     
-    # 3. 转换 log_std (独立参数)
+    # 3. Convert log_std (independent parameter)
     if 'log_std' in sb3_state_dict:
         log_std = sb3_state_dict['log_std']
-        
+
         if log_std.dim() == 2:
-            # gSDE: log_std 形状是 (latent_dim, action_dim)
-            # 转换为固定的 sigma_param: (action_dim, 1)
-            # 策略：取所有 latent 维度的平均值
+            # gSDE: log_std shape is (latent_dim, action_dim)
+            # Convert to fixed sigma_param: (action_dim, 1)
+            # Strategy: take average across all latent dimensions
             avg_log_std = log_std.mean(dim=0, keepdim=True).T  # (action_dim, 1)
             offlinerl_state_dict['actor.dist_net.sigma_param'] = avg_log_std
         else:
-            # 标准 PPO (1D tensor): log_std 形状是 (action_dim,)
-            # 转换为 sigma_param: (action_dim, 1)
+            # Standard PPO (1D tensor): log_std shape is (action_dim,)
+            # Convert to sigma_param: (action_dim, 1)
             offlinerl_state_dict['actor.dist_net.sigma_param'] = log_std.unsqueeze(-1)
     
     # 4. 转换 value network (mlp_extractor.value_net -> critic_backbone)
@@ -73,7 +73,7 @@ def convert_sb3_to_offlinerl_format(sb3_state_dict: dict, pol_hidden_dims: list,
         offlinerl_state_dict['critic1.last.weight'] = sb3_state_dict['value_net.weight']
         offlinerl_state_dict['critic1.last.bias'] = sb3_state_dict['value_net.bias']
     
-    # 为了兼容性，也创建critic2（通常与critic1相同）
+    # For compatibility, also create critic2 (usually same as critic1)
     for key in list(offlinerl_state_dict.keys()):
         if key.startswith("critic1."):
             critic2_key = key.replace("critic1.", "critic2.")
@@ -87,32 +87,32 @@ class ControllerBest:
     Controller that loads the best model from best_model.zip and converts it to OfflineRL format
     """
     def __init__(self, args):
-        # 设置网络架构参数（所有实验都使用 [250, 250]）
+        # Set network architecture parameters (all experiments use [250, 250])
         self.pol_hidden_dims = [250, 250]
         self.val_hidden_dims = [250, 250]
-        
-        # 构建 best_model 路径
+
+        # Build best_model path
         cwd = os.getcwd()
         best_model_dir = os.path.join(cwd, args.actor_path, 'best_model')
         best_model_zip = os.path.join(best_model_dir, 'best_model.zip')
         converted_pth = os.path.join(best_model_dir, 'policy.pth')
-        
-        # 检查 best_model.zip 是否存在
+
+        # Check if best_model.zip exists
         if not os.path.exists(best_model_zip):
             raise FileNotFoundError(
                 f"Best model not found at {best_model_zip}\n"
                 f"Please make sure the training used EvalCallback to save the best model."
             )
-        
-        # 检查是否已经转换过，如果没有则进行转换
+
+        # Check if already converted, if not then convert
         if not os.path.exists(converted_pth):
             print(f"Converting best model from {best_model_zip} to OfflineRL format...")
             self._convert_best_model(best_model_zip, converted_pth, args.device)
             print(f"Converted model saved to {converted_pth}")
         else:
             print(f"Using existing converted model at {converted_pth}")
-        
-        # 创建 actor 网络
+
+        # Create actor network
         actor_backbone = MLP(input_dim=args.obs_dim, hidden_dims=args.hidden_dims)
         if not args.stochastic_actor:
             self.actor = Actor(actor_backbone, args.action_dim, max_action=args.max_action, device=args.device)
@@ -121,12 +121,12 @@ class ControllerBest:
                 latent_dim=getattr(actor_backbone, "output_dim"),
                 output_dim=args.action_dim,
                 unbounded=True,
-                conditioned_sigma=False,  # 使用固定 sigma_param
+                conditioned_sigma=False,  # Use fixed sigma_param
                 max_mu=args.max_action
             )
             self.actor = ActorProb(actor_backbone, dist, args.device)
-        
-        # 加载转换后的权重
+
+        # Load converted weights
         checkpoint = torch.load(converted_pth, map_location=args.device)
         
         state_dict = {}
@@ -144,42 +144,42 @@ class ControllerBest:
     
     def _convert_best_model(self, best_model_zip: str, output_pth: str, device):
         """
-        从 best_model.zip 加载 SB3 模型并转换为 OfflineRL 格式
-        
+        Load SB3 model from best_model.zip and convert to OfflineRL format
+
         Args:
-            best_model_zip: best_model.zip 的路径
-            output_pth: 输出 .pth 文件的路径
-            device: 设备
+            best_model_zip: Path to best_model.zip
+            output_pth: Path to output .pth file
+            device: Device
         """
-        # 加载 SB3 模型（不需要环境）
+        # Load SB3 model (no environment needed)
         print(f"Loading SB3 model from {best_model_zip}...")
         model = PPO.load(best_model_zip, env=None, device=device)
-        
-        # 获取 policy 的 state_dict
+
+        # Get policy's state_dict
         sb3_state_dict = model.policy.state_dict()
-        
-        # 转换为 OfflineRL 格式
+
+        # Convert to OfflineRL format
         print("Converting to OfflineRL format...")
         converted_state_dict = convert_sb3_to_offlinerl_format(
             sb3_state_dict,
             self.pol_hidden_dims,
             self.val_hidden_dims
         )
-        
-        # 保存转换后的模型
+
+        # Save converted model
         os.makedirs(os.path.dirname(output_pth), exist_ok=True)
         torch.save(converted_state_dict, output_pth)
         print(f"Conversion complete!")
     
     def act(self, obs):
         """
-        根据观测选择动作
-        
+        Select action based on observation
+
         Args:
-            obs: 观测
-            
+            obs: Observation
+
         Returns:
-            action: 动作
+            action: Action
         """
         with torch.no_grad():
             if not self.stochastic_actor:

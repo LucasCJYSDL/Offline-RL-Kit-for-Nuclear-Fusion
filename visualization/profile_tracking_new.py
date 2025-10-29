@@ -25,54 +25,54 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control") 
-    parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
     #parser.add_argument("--actor_path", type=str, default="log/dens/cql/seed_1&timestamp_25-1004-113803", help="Path to the actor checkpoint")
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps800000_pol250x250_val250x250", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/test/rotation_ppo_seed1/lr0.003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps5010_pol250x250_val250x250", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
 
-    parser.add_argument("--save_dir_name", type=str, default="dens_network", help="保存结果的子文件夹名称")
-    parser.add_argument("--output_base_dir", type=str, default="/home/scratch/jiayuc2/eval_bao", help="输出文件的基础目录")
+    parser.add_argument("--save_dir_name", type=str, default="test", help="Subfolder name for saving results")
+    parser.add_argument("--output_base_dir", type=str, default="/home/scratch/jiayuc2/eval_bao", help="Base directory for output files")
     return parser.parse_args()
 
 
 def calculate_tracking_metrics(target_array, current_array):
-    """计算跟踪性能指标
+    """Calculate tracking performance metrics
 
     Args:
         target_array: shape (time_steps, num_dimensions)
         current_array: shape (time_steps, num_dimensions)
 
     Returns:
-        metrics: 包含总体指标和每个维度指标的字典
+        metrics: Dictionary containing overall metrics and per-dimension metrics
     """
     target_array = np.array(target_array)
     current_array = np.array(current_array)
 
-    # 基本误差计算
+    # Basic error calculation
     error = target_array - current_array
     abs_error = np.abs(error)
 
-    # 总体指标（所有维度平均）
+    # Overall metrics (averaged across all dimensions)
     metrics = {
-        # 1. 均方根误差 (RMSE)
+        # 1. Root Mean Square Error (RMSE)
         'rmse': float(np.sqrt(np.mean(error**2))),
 
-        # 2. 平均绝对误差 (MAE)
+        # 2. Mean Absolute Error (MAE)
         'mae': float(np.mean(abs_error)),
 
-        # 3. 累计绝对误差
+        # 3. Cumulative Absolute Error
         'cumulative_absolute_error': float(np.sum(abs_error)),
 
-        # 4. 累计平方误差
+        # 4. Cumulative Squared Error
         'cumulative_squared_error': float(np.sum(error**2))
     }
 
-    # 每个维度的指标
+    # Per-dimension metrics
     num_dimensions = target_array.shape[1] if len(target_array.shape) > 1 else 1
 
     if num_dimensions > 1:
@@ -89,7 +89,7 @@ def calculate_tracking_metrics(target_array, current_array):
                 'cumulative_squared_error': float(np.sum(error_dim**2))
             }
     else:
-        # 如果只有一个维度，也添加component1
+        # If only one dimension, also add component1
         metrics['per_component'] = {
             'component1': {
                 'rmse': metrics['rmse'],
@@ -103,22 +103,12 @@ def calculate_tracking_metrics(target_array, current_array):
 
 
 def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
-    """打印跟踪指标"""
-    print(f"\nShot #{shot_id} - 回合奖励: {episode_reward:.3f}, 长度: {episode_length}")
+    """Print tracking metrics"""
+    print(f"\nShot #{shot_id} - Episode Reward: {episode_reward:.3f}, Length: {episode_length}")
     print(f"  RMSE: {metrics['rmse']:.4f}")
     print(f"  MAE: {metrics['mae']:.4f}")
-    print(f"  累计绝对误差: {metrics['cumulative_absolute_error']:.2f}")
-    print(f"  累计平方误差: {metrics['cumulative_squared_error']:.2f}")
-
-
-
-def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
-    """打印跟踪指标"""
-    print(f"\nShot #{shot_id} - 回合奖励: {episode_reward:.3f}, 长度: {episode_length}")
-    print(f"  RMSE: {metrics['rmse']:.4f}")
-    print(f"  MAE: {metrics['mae']:.4f}")
-    print(f"  累计绝对误差: {metrics['cumulative_absolute_error']:.2f}")
-    print(f"  累计平方误差: {metrics['cumulative_squared_error']:.2f}")
+    print(f"  Cumulative Absolute Error: {metrics['cumulative_absolute_error']:.2f}")
+    print(f"  Cumulative Squared Error: {metrics['cumulative_squared_error']:.2f}")
 
 
 def save_tracking_results(all_results, log_folder):
@@ -134,7 +124,7 @@ def save_tracking_results(all_results, log_folder):
     num_shots = len(shot_results)
 
     if num_shots > 0:
-        # 计算总体平均指标
+        # Calculate overall average metrics
         summary_metrics = {
             'total_shots': num_shots,
             'avg_rmse': sum(shot['tracking_metrics']['rmse'] for shot in shot_results) / num_shots,
@@ -144,7 +134,7 @@ def save_tracking_results(all_results, log_folder):
             'avg_length': sum(shot['episode_length'] for shot in shot_results) / num_shots
         }
 
-        # 计算每个维度的平均指标
+        # Calculate average metrics for each dimension
         if 'per_component' in shot_results[0]['tracking_metrics']:
             component_names = list(shot_results[0]['tracking_metrics']['per_component'].keys())
             summary_metrics['per_component'] = {}
@@ -182,7 +172,7 @@ def save_tracking_results(all_results, log_folder):
                     'cumulative_squared_error': shot_data['tracking_metrics']['cumulative_squared_error']
                 }
 
-                # 添加每个维度的指标
+                # Add per-dimension metrics
                 if 'per_component' in shot_data['tracking_metrics']:
                     for comp_name, comp_metrics in shot_data['tracking_metrics']['per_component'].items():
                         row[f'{comp_name}_rmse'] = comp_metrics['rmse']
@@ -213,7 +203,7 @@ def save_tracking_results(all_results, log_folder):
         print(f"Average Reward: {summary['avg_reward']:.3f}")
         print(f"Average Length: {summary['avg_length']:.1f}")
 
-        # 打印每个维度的平均指标
+        # Print average metrics for each dimension
         if 'per_component' in summary:
             print(f"\nPer-Component Average Statistics:")
             for comp_name, comp_metrics in summary['per_component'].items():
@@ -248,18 +238,18 @@ def run(args=get_args()) -> None:
     shot_list = env.get_eval_shot_list()
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
 
-    # 从 actor_path 中提取路径信息来构建保存目录
-    # 提取 actor_path 中从 test_bao 之后的所有路径部分
+    # Extract path information from actor_path to build save directory
+    # Extract all path parts after test_bao from actor_path
     actor_path_parts = args.actor_path.split('/')
-    # 找到包含实验信息的路径部分（从 test_bao 后开始）
+    # Find the path part containing experiment info (starting from after test_bao)
     try:
         test_bao_idx = actor_path_parts.index('dens_ppo_seed1')
         experiment_path = '/'.join(actor_path_parts[test_bao_idx + 1:])
     except ValueError:
-        # 如果没有找到 test_bao，使用最后两个路径部分
+        # If test_bao not found, use the last two path parts
         experiment_path = '/'.join(actor_path_parts[-2:]) if len(actor_path_parts) >= 2 else actor_path_parts[-1]
 
-    # 构建最终的保存路径
+    # Build final save path
     log_folder = os.path.join(args.output_base_dir, args.save_dir_name, experiment_path)
 
     os.makedirs(log_folder, exist_ok=True)
@@ -291,13 +281,13 @@ def run(args=get_args()) -> None:
                 break
 
             obs = next_obs
-         # 计算跟踪指标
+         # Calculate tracking metrics
         target_quan_array = np.array(target_quan_array)
         cur_quan_array = np.array(cur_quan_array)
         time_array = np.array(time_array)
         #print(target_quan_array)
-        
-        # 计算量化指标
+
+        # Calculate quantitative metrics
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
         
         all_results[f'shot_{shot}'] = {
@@ -312,7 +302,7 @@ def run(args=get_args()) -> None:
         if args.plot_actuators:
             plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
 
-        # 打印详细指标
+        # Print detailed metrics
         print_tracking_metrics(shot, tracking_metrics, episode_reward, episode_length)
 
     save_tracking_results(all_results, log_folder)

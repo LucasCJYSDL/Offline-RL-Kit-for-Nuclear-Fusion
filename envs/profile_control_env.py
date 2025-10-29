@@ -54,7 +54,7 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
     def step(self, cur_action):
         # prepare the input for the dymamics model
         cur_action = torch.Tensor(cur_action).to(self.device)
-        batch_size = cur_action.shape[0] # step with a batch of actions
+        batch_size = cur_action.shape[0] # step with a batch of actions  #？？？
         cur_action = self.sa_processor.get_step_action(cur_action)
         cur_action_pad = torch.FloatTensor(self.tracking_actions[self.cur_time]).unsqueeze(0).repeat(batch_size, 1).to(self.device)
         cur_action_pad[:, self.action_idxs] = cur_action

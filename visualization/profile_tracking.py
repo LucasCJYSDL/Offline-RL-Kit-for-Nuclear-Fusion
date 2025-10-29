@@ -60,12 +60,12 @@ def calculate_tracking_metrics(target_array, current_array):
 
 
 def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
-    """打印跟踪指标"""
-    print(f"\nShot #{shot_id} - 回合奖励: {episode_reward:.3f}, 长度: {episode_length}")
+    """Print tracking metrics"""
+    print(f"\nShot #{shot_id} - Episode Reward: {episode_reward:.3f}, Length: {episode_length}")
     print(f"  RMSE: {metrics['rmse']:.4f}")
     print(f"  MAE: {metrics['mae']:.4f}")
-    print(f"  累计绝对误差: {metrics['cumulative_absolute_error']:.2f}")
-    print(f"  累计平方误差: {metrics['cumulative_squared_error']:.2f}")
+    print(f"  Cumulative Absolute Error: {metrics['cumulative_absolute_error']:.2f}")
+    print(f"  Cumulative Squared Error: {metrics['cumulative_squared_error']:.2f}")
 
 
 def save_tracking_results(all_results, log_folder):
