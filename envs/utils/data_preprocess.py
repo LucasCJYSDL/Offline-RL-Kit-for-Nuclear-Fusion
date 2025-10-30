@@ -263,8 +263,9 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
                     for memb in all_models:
                         memb.reset() # optional
                         net_input_n = memb.normalizer.normalize(net_input, 0)
-                        pred_out, _ = memb.predict(net_input_n) # modified get_mem_out .unsqueeze(1)
-                        memb_out = torch.FloatTensor(pred_out).unsqueeze(1)
+                        # pred_out, _ = memb.predict(net_input_n) # modified get_mem_out .unsqueeze(1)
+                        # memb_out = torch.FloatTensor(pred_out).unsqueeze(1)
+                        memb_out = memb.get_mem_out(net_input_n).unsqueeze(1)
                         memb_out_list.append(memb_out)
                     shot_hidden_states = torch.stack(memb_out_list, dim=1).cpu().tolist()
                     rl_data['hidden_states'].extend(shot_hidden_states)

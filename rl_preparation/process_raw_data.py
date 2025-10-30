@@ -10,26 +10,27 @@ from envs.utils.data_preprocess import get_raw_data, store_offlinerl_dataset
 
 
 #!!! what you need to specify
-raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_flattop_copy" # the raw data  #/zfsauton/project/fusion/data/organized/minimal_cakenn_v4_expand_cont0002_noq_fix
-training_model_dir = "/zfsauton2/home/jiayuc2/model/rpnn_noshape_gas_flat_top_step_two_logvar" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
-evaluation_model_dir = "/zfsauton2/home/jiayuc2/model/rpnn_noshape_gas_flat_top_step_two_logvar" # the rpnn dynamics model for evaluation, which can be different from the training one #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final
+raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_flattop" # the raw data  #/zfsauton/project/fusion/data/organized/minimal_cakenn_v4_expand_cont0002_noq_fix
+training_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
+evaluation_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # the rpnn dynamics model for evaluation, which can be different from the training one #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final
 
 action_bound_file = "noshape_gas_flattop.yaml" # actuator bounds, which you probably don't need to change
 state_bound_file = "noshape_gas_flattop.yaml" # state bounds, which you probably don't need to change
-reference_shot = 161412 # 189268 161412
+reference_shot = 161409 # 189268 161412
 #need change
 warmup_steps = 0  # we won't involve the first () steps of each shot in the training dataset
 change_every = 50 # change the tracking target every () time steps
 #save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old" # the processed data will be saved here
 #save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old_betan" # need to change, the processed data will be saved here
 #save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
-save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_new"
+save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
 os.makedirs(save_data_dir, exist_ok=True)
 
 # rl_shot_list = list(range(reference_shot - 1000, reference_shot + 1000)) # these shots are used for rl training
-rl_shot_list = list(range(reference_shot - 10, reference_shot + 10)) # these shots are used for rl training
+rl_shot_list = list(range(reference_shot - 6, reference_shot + 7)) # these shots are used for rl training
 il_shot_list = list(range(reference_shot - 100, reference_shot + 100)) # these shots are used to imitate
-tracking_shot_list = list(range(reference_shot - 5, reference_shot + 5)) # we would test the policy by tracking shots in this list 
+# tracking_shot_list = list(range(reference_shot - 5, reference_shot + 5)) # we would test the policy by tracking shots in this list 
+tracking_shot_list =  [161409, 161410, 161412]
 # the processed data will be saved in the same directory as the raw data
 rl_data_path = save_data_dir + '/rl_data.h5'
 il_data_path = save_data_dir + '/il_data.h5'

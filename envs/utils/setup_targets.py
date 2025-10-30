@@ -169,7 +169,7 @@ def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon,
     """
     target_dim = len(target_idxs)
     
-    # Extract target dimensions from reference episode (模拟原代码的 target = trajectories[r_]['states'][start_idx:horizon+start_idx, :])
+        # Extract target dimensions from reference episode (simulates original code: target = trajectories[r_]['states'][start_idx:horizon+start_idx, :])
     if len(ref_episode) > 0:
         target = ref_episode[:150,:]
         

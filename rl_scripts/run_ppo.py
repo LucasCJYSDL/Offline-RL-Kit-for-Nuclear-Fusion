@@ -26,10 +26,10 @@ def get_args():
     parser.add_argument("--algo-name", type=str, default="ppo")
     
 
-    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/test", 
-                       help="Specify output directory path, use default path if not specified")
-    # parser.add_argument("--output-dir", type=str, default=None, 
-    #                     help="Specify output directory path, use default path if not specified")
+    # parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/test", 
+    #                    help="Specify output directory path, use default path if not specified")
+    parser.add_argument("--output-dir", type=str, default=None, 
+                        help="Specify output directory path, use default path if not specified")
     # PPO hyperparameters
     parser.add_argument("--learning-rate", type=float, default=3e-3) 
     parser.add_argument("--n-steps", type=int, default=2048)
@@ -42,13 +42,13 @@ def get_args():
     parser.add_argument("--vf-coef", type=float, default=1)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
  #   parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
-    parser.add_argument("--pol-hidden-dims", type=int, nargs='*', default=[250, 250],
+    parser.add_argument("--pol-hidden-dims", type=int, nargs='*', default=[256, 256],
                        help="Policy network hidden layer dimensions")
-    parser.add_argument("--val-hidden-dims", type=int, nargs='*', default=[250, 250],
+    parser.add_argument("--val-hidden-dims", type=int, nargs='*', default=[256, 256],
                        help="Value network hidden layer dimensions")
     
     # training parameters
-    parser.add_argument("--total-timesteps", type=int, default=5_010)#1500_000
+    parser.add_argument("--total-timesteps", type=int, default=3000000)#1500_000 #5_010
     parser.add_argument("--eval-freq", type=int, default=2_400)
     parser.add_argument("--eval-episodes", type=int, default=6)
     parser.add_argument("--save-freq", type=int, default=2_400)
@@ -62,7 +62,7 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=3)
+    parser.add_argument("--cuda_id", type=int, default=5)
     return parser.parse_args()
     
 #action_space

@@ -22,7 +22,7 @@ def convert_sb3_to_offlinerl_format(sb3_state_dict: dict, pol_hidden_dims: list,
     """
     offlinerl_state_dict = {}
     
-    # 1. 转换 policy network (mlp_extractor.policy_net -> actor_backbone)
+    # 1. Convert policy network (mlp_extractor.policy_net -> actor_backbone)
     layer_idx = 0
     for i, hidden_dim in enumerate(pol_hidden_dims):
         # SB3: mlp_extractor.policy_net.{layer_idx}.weight/bias
@@ -36,7 +36,7 @@ def convert_sb3_to_offlinerl_format(sb3_state_dict: dict, pol_hidden_dims: list,
         
         layer_idx += 2  # Linear + ReLU
     
-    # 2. 转换 action_net (mean 输出层)
+    #2. Convert action_net (mean output layer)
     if 'action_net.weight' in sb3_state_dict:
         offlinerl_state_dict['actor.dist_net.mu.weight'] = sb3_state_dict['action_net.weight']
         offlinerl_state_dict['actor.dist_net.mu.bias'] = sb3_state_dict['action_net.bias']
@@ -56,7 +56,7 @@ def convert_sb3_to_offlinerl_format(sb3_state_dict: dict, pol_hidden_dims: list,
             # Convert to sigma_param: (action_dim, 1)
             offlinerl_state_dict['actor.dist_net.sigma_param'] = log_std.unsqueeze(-1)
     
-    # 4. 转换 value network (mlp_extractor.value_net -> critic_backbone)
+    #4. Convert value network (mlp_extractor.value_net -> critic_backbone)
     layer_idx = 0
     for i, hidden_dim in enumerate(val_hidden_dims):
         weight_key_sb3 = f'mlp_extractor.value_net.{layer_idx}.weight'
@@ -68,7 +68,7 @@ def convert_sb3_to_offlinerl_format(sb3_state_dict: dict, pol_hidden_dims: list,
         
         layer_idx += 2  # Linear + ReLU
     
-    # 5. 转换 value_net (value 输出层)
+     # 5. Convert value_net (value output layer)
     if 'value_net.weight' in sb3_state_dict:
         offlinerl_state_dict['critic1.last.weight'] = sb3_state_dict['value_net.weight']
         offlinerl_state_dict['critic1.last.bias'] = sb3_state_dict['value_net.bias']
