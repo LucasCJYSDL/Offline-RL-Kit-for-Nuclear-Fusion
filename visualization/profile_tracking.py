@@ -35,7 +35,7 @@ def get_args():
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out/beta_tracking_env/ppo_prof_control_zipfit_dens_optimized_lite/policy", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
-    parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
+    parser.add_argument("--stochastic_actor", type=bool, default=False, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
     return parser.parse_args()

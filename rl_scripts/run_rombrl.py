@@ -10,7 +10,8 @@ from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian, EnsembleDynamicsModel
 from offlinerlkit.dynamics import EnsembleDynamics
 from offlinerlkit.buffer import ReplayBuffer, RobustRolloutBuffer, ModelSLReplayBuffer
-from offlinerlkit.utils.logger import Logger, make_log_dirs
+#from offlinerlkit.utils.logger import Logger, make_log_dirs
+from offlinerlkit.utils.logger import Logger, make_log_dirs_new
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import ROMBRLPolicy
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
@@ -73,10 +74,10 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="dens") #?
+    parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--update_hidden_states", type=bool, default=False) # whether to update the hidden states in the offline dataset, since the dynamics model is being updated with the rl policy
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=2)
+    parser.add_argument("--cuda_id", type=int, default=0)
 
     return parser.parse_args()
 
@@ -228,8 +229,8 @@ def train(args=get_args()):
     )
 
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["grad_mode", "sl_weight", "actor_training_epoch", "onpolicy_rollout_batch_size", "onpolicy_rollout_length", "small_traj_batch"])
-    
+    #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["grad_mode", "sl_weight", "actor_training_epoch", "onpolicy_rollout_batch_size", "onpolicy_rollout_length", "small_traj_batch"])
+    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), record_params=["grad_mode", "sl_weight", "actor_training_epoch", "onpolicy_rollout_batch_size", "onpolicy_rollout_length", "small_traj_batch"], base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",

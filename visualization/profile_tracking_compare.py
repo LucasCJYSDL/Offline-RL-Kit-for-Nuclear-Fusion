@@ -33,11 +33,11 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="fusion_env") 
-    parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # old PPO controller settings
     parser.add_argument("--old_actor_path", type=str, 
-                       default="/home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy", 
+                       default="/home/scratch/jiayuc2/rl_out_seed1_256/prof_tracking_rot_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite_256/policy", 
                        help="Path to the old actor checkpoint")
     #dens path
     # /home/scratch/jiayuc2/rl_out/prof_tracking_dens_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/policy
@@ -45,12 +45,12 @@ def get_args():
     # /home/scratch/jiayuc2/rl_out/prof_tracking_rot_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized_lite/601/policy
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network")
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256, 256], help="Hidden dimensions of the actor network")
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
     
     # new PPO data settings
     parser.add_argument("--new_ppo_data_path", type=str,
-                       default="/home/scratch/jiayuc2/temp_new/saved_data/dens/home_scratch_jiayuc2_rl_out_off_test_bao_dens_network_dens_ppo_seed1_lr0.003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps800000_pol250x250_val250x250/shot_data.npz",
+                       default="/home/scratch/jiayuc2/temp_1104/ppo/saved_data/rotation/zfsauton2_home_jiayuc2_Proj_8_Offline-RL-Kit-for-Nuclear-Fusion_rl_scripts_log_rotation_ppo_seed_1&timestamp_25-1104-040315/shot_data.npz",
                        help="Path to the saved new PPO data")
 
     # comparison settings
@@ -241,7 +241,7 @@ def run(args=get_args()) -> None:
     else:
         comparison_id = f"old_{old_actor_info}_vs_new_{new_ppo_info}_seed_{args.seed}"
 
-    log_folder = os.path.join(args.save_base_dir, "results", "comparison0", args.task, comparison_id)
+    log_folder = os.path.join(args.save_base_dir, "results", "comparison_new", args.task, comparison_id)
     os.makedirs(log_folder, exist_ok=True)
 
     print(f"Comparison results will be saved to: {log_folder}")

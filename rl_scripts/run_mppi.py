@@ -12,7 +12,8 @@ import numpy as np
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from offlinerlkit.utils.logger import Logger, make_log_dirs
+#from offlinerlkit.utils.logger import Logger, make_log_dirs
+from offlinerlkit.utils.logger import Logger, make_log_dirs_new
 from offlinerlkit.planner import MPPI
 
 from envs.env_wrappers import PlanningWrapper
@@ -46,7 +47,7 @@ def get_args():
     #!!! what you need to specify
     parser.add_argument("--load_data", type=bool, default=False) # true, if you already have the planning result and want to skip the planning process
     parser.add_argument("--env", type=str, default="profile_control") # cannot be base
-    parser.add_argument("--task", type=str, default="dens") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=3) # -1 represents using cpus
 
@@ -74,7 +75,10 @@ def train(args=get_args()):
     env.seed(args.seed)
 
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["horizon", "num_samples", "lam", "penalty_coef"])
+    #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["horizon", "num_samples", "lam", "penalty_coef"])
+    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
+                                 record_params=["horizon", "num_samples", "lam", "penalty_coef"],
+                                 base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",
@@ -92,7 +96,7 @@ def train(args=get_args()):
         planner = MPPI(plan_env, args, logger, args.device)
         planning_dataset = planner.run()
         # save the planning result
-        with h5py.File(raw_data_dir + '/mppi_data.h5', 'w') as hdf:
+        with h5py.File(raw_data_dir + '/mppi_data_100.h5', 'w') as hdf:
             for key, value in planning_dataset.items():
                 print(key, value.shape)
                 hdf.create_dataset(key, data=value)

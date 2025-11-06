@@ -19,31 +19,40 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/home/scratch/jiayuc2/temp_new",
+                       default="/home/scratch/jiayuc2/temp_1106/td3bc",
                        help="Base directory for saving all results")
     
     # basic settings
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
-    parser.add_argument("--cuda_id", type=int, default=4, help="CUDA device ID")
+    parser.add_argument("--cuda_id", type=int, default=5, help="CUDA device ID")
     parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control") 
-    parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
+    # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
+    parser.add_argument("--actor_path",type=str, default="/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit-for-Nuclear-Fusion/rl_scripts/log/rotation/td3bc/seed_1&timestamp_25-1029-223217")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
-    parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--stochastic_actor", type=bool, default=False, help="Is this a stochatic actor?")
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256, 256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
-
+    parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL)")
     return parser.parse_args()
 
 
 def calculate_tracking_metrics(target_array, current_array):
-    """Calculate tracking performance metrics"""
+    """Calculate tracking performance metrics
+
+    Args:
+        target_array: shape (time_steps, num_dimensions)
+        current_array: shape (time_steps, num_dimensions)
+
+    Returns:
+        metrics: Dictionary containing overall metrics and per-dimension metrics
+    """
     target_array = np.array(target_array)
     current_array = np.array(current_array)
 
@@ -51,6 +60,7 @@ def calculate_tracking_metrics(target_array, current_array):
     error = target_array - current_array
     abs_error = np.abs(error)
 
+    # Overall metrics (averaged across all dimensions)
     metrics = {
         # 1. Root Mean Square Error (RMSE)
         'rmse': float(np.sqrt(np.mean(error**2))),
@@ -65,8 +75,44 @@ def calculate_tracking_metrics(target_array, current_array):
         'cumulative_squared_error': float(np.sum(error**2))
     }
 
+    # Per-dimension metrics
+    num_dimensions = target_array.shape[1] if len(target_array.shape) > 1 else 1
+
+    if num_dimensions > 1:
+        metrics['per_component'] = {}
+        for dim in range(num_dimensions):
+            component_name = f'component{dim + 1}'
+            error_dim = error[:, dim]
+            abs_error_dim = abs_error[:, dim]
+
+            metrics['per_component'][component_name] = {
+                'rmse': float(np.sqrt(np.mean(error_dim**2))),
+                'mae': float(np.mean(abs_error_dim)),
+                'cumulative_absolute_error': float(np.sum(abs_error_dim)),
+                'cumulative_squared_error': float(np.sum(error_dim**2))
+            }
+    else:
+        # If only one dimension, also add component1
+        metrics['per_component'] = {
+            'component1': {
+                'rmse': metrics['rmse'],
+                'mae': metrics['mae'],
+                'cumulative_absolute_error': metrics['cumulative_absolute_error'],
+                'cumulative_squared_error': metrics['cumulative_squared_error']
+            }
+        }
+
     return metrics
 
+def calculate_reconstruct_tracking_metrics(target_array, current_array):
+    target_array = np.array(target_array)
+    current_array = np.array(current_array)
+
+    # Basic error calculation
+    error = target_array - current_array
+    mse_per_column = np.mean(error**2, axis=0) 
+    print(mse_per_column)
+    return mse_per_column
 
 def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
     """Print tracking metrics"""
@@ -80,30 +126,48 @@ def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
 def save_tracking_results(all_results, log_folder):
     """
     Save tracking results to JSON and CSV files
-    
+
     Args:
         all_results: Dictionary containing all shot results
         log_folder: Directory to save files
     """
-  
+
     shot_results = [v for k, v in all_results.items() if k.startswith('shot_')]
     num_shots = len(shot_results)
-    
+
     if num_shots > 0:
+        # Calculate overall average metrics
         summary_metrics = {
             'total_shots': num_shots,
             'avg_rmse': sum(shot['tracking_metrics']['rmse'] for shot in shot_results) / num_shots,
             'avg_mae': sum(shot['tracking_metrics']['mae'] for shot in shot_results) / num_shots,
+            'avg_cumulative_absolute_error': sum(shot['tracking_metrics']['cumulative_absolute_error'] for shot in shot_results) / num_shots,
             'avg_reward': sum(shot['episode_reward'] for shot in shot_results) / num_shots,
             'avg_length': sum(shot['episode_length'] for shot in shot_results) / num_shots
         }
+
+        # Calculate average metrics for each dimension
+        if 'per_component' in shot_results[0]['tracking_metrics']:
+            component_names = list(shot_results[0]['tracking_metrics']['per_component'].keys())
+            summary_metrics['per_component'] = {}
+
+            for comp_name in component_names:
+                summary_metrics['per_component'][comp_name] = {
+                    'avg_rmse': sum(shot['tracking_metrics']['per_component'][comp_name]['rmse']
+                                   for shot in shot_results) / num_shots,
+                    'avg_mae': sum(shot['tracking_metrics']['per_component'][comp_name]['mae']
+                                  for shot in shot_results) / num_shots,
+                    'avg_cumulative_absolute_error': sum(shot['tracking_metrics']['per_component'][comp_name]['cumulative_absolute_error']
+                                                         for shot in shot_results) / num_shots,
+                }
+
         all_results['summary'] = summary_metrics
-    
+
     # Save results to JSON file
     results_file = os.path.join(log_folder, 'tracking_results.json')
     with open(results_file, 'w') as f:
         json.dump(all_results, f, indent=2)
-    
+
     # Save to CSV file
     try:
         import pandas as pd
@@ -119,31 +183,50 @@ def save_tracking_results(all_results, log_folder):
                     'cumulative_absolute_error': shot_data['tracking_metrics']['cumulative_absolute_error'],
                     'cumulative_squared_error': shot_data['tracking_metrics']['cumulative_squared_error']
                 }
+
+                # Add per-dimension metrics
+                if 'per_component' in shot_data['tracking_metrics']:
+                    for comp_name, comp_metrics in shot_data['tracking_metrics']['per_component'].items():
+                        row[f'{comp_name}_rmse'] = comp_metrics['rmse']
+                        row[f'{comp_name}_mae'] = comp_metrics['mae']
+                        row[f'{comp_name}_cumulative_absolute_error'] = comp_metrics['cumulative_absolute_error']
+
                 df_data.append(row)
-        
+
         df = pd.DataFrame(df_data)
         csv_file = os.path.join(log_folder, 'tracking_results.csv')
         df.to_csv(csv_file, index=False)
-        
+
         print(f"\nResults saved to:")
         print(f"JSON format: {results_file}")
         print(f"CSV format: {csv_file}")
-        
+
     except ImportError:
         print(f"\nResults saved to:")
         print(f"JSON format: {results_file}")
         print("Note: pandas not installed, cannot save CSV format")
-    
+
     if 'summary' in all_results:
         summary = all_results['summary']
         print(f"\nOverall Statistics:")
         print(f"Average RMSE: {summary['avg_rmse']:.4f}")
         print(f"Average MAE: {summary['avg_mae']:.4f}")
+        print(f"Average Cumulative Absolute Error: {summary['avg_cumulative_absolute_error']:.4f}")
         print(f"Average Reward: {summary['avg_reward']:.3f}")
         print(f"Average Length: {summary['avg_length']:.1f}")
 
+        # Print average metrics for each dimension
+        if 'per_component' in summary:
+            print(f"\nPer-Component Average Statistics:")
+            for comp_name, comp_metrics in summary['per_component'].items():
+                print(f"  {comp_name}:")
+                print(f"    Average RMSE: {comp_metrics['avg_rmse']:.4f}")
+                print(f"    Average MAE: {comp_metrics['avg_mae']:.4f}")
+                print(f"    Average Cumulative Absolute Error: {comp_metrics['avg_cumulative_absolute_error']:.4f}")
 
-def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
+
+
+def save_shot_data(shot_data_dict, save_folder, task_name, actor_info, seed):
     """
     Save shot data to npz file
     
@@ -154,7 +237,7 @@ def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
         actor_info: Actor information for folder structure
     """
     # Create save directory structure
-    data_save_dir = os.path.join(save_folder, "saved_data", task_name, actor_info)
+    data_save_dir = os.path.join(save_folder, "saved_data", task_name, actor_info, seed)
     os.makedirs(data_save_dir, exist_ok=True)
     
     # Save data to npz file
@@ -182,7 +265,7 @@ def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
 
 def run(args=get_args()) -> None:
     # register an env
-    args.device = torch.device("cuda:5".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
+    args.device = torch.device("cuda".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=args.il_actor) # these are the data and env used to train the actor
     args.obs_dim = offline_data['observations'].shape[1]
     args.action_dim = offline_data['actions'].shape[1]
@@ -251,6 +334,7 @@ def run(args=get_args()) -> None:
 
         # Calculate quantitative metrics
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
+        mse_reconstruct = calculate_reconstruct_tracking_metrics(reconstruct_target_quan_array, reconstruct_target_quan_array)
         all_results[f'shot_{shot}'] = {
             'shot_id': shot,
             'episode_reward': episode_reward,
@@ -265,7 +349,8 @@ def run(args=get_args()) -> None:
             'cur_act_array': cur_act_array,
             'reconstruct_cur_quan_array': reconstruct_cur_quan_array,
             'episode_reward': episode_reward,
-            'episode_length': episode_length
+            'episode_length': episode_length,
+            'mse_reconstruct': mse_reconstruct 
         }
         
         # make plots
@@ -280,7 +365,7 @@ def run(args=get_args()) -> None:
     
     # Save shot data for comparison
     actor_info_str = "_".join(actor_info[1:])  # Join actor path components
-    save_shot_data(shot_data_dict, args.save_base_dir, args.task, actor_info_str)
+    save_shot_data(shot_data_dict, args.save_base_dir, args.task, actor_info_str, args.seed)
 
 if __name__ == "__main__":
     run()

@@ -82,6 +82,7 @@ def load_offline_data(env, tracking_target, is_il):
     keyword = tracking_target
     for i in range(offline_data['obs_dim']):
         if data_info['state_space'][i].startswith(keyword):
+            print(i)
             offline_data['index_list'].append(i)
             offline_data['tracking_target_names'].append(data_info['state_space'][i])
 

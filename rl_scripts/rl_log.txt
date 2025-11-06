@@ -1,0 +1,3 @@
+Timestamp 	 Status 	 Args
+2025-10-30 13:06:30.174670	 Starting 	 {'environment': 'prof_tracking_rot_kth_target_flattop_subset_boots', 'rlkit': 'ppo_prof_control_zipfit_dens_optimized_lite_256', 'seed': 1}
+2025-10-30 13:07:00.226638	 Finished 	 {'environment': 'prof_tracking_rot_kth_target_flattop_subset_boots', 'rlkit': 'ppo_prof_control_zipfit_dens_optimized_lite_256', 'seed': 1}

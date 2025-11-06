@@ -360,6 +360,39 @@ def make_log_dirs(
     return log_dirs
 
 
+def make_log_dirs_new(
+    task_name: str,
+    algo_name: str,
+    seed: int,
+    args: Dict,
+    record_params: Optional[List]=None,
+    base_dir: Optional[str]=None
+) -> str:
+    """
+    New version of make_log_dirs with customizable base_dir.
+
+    Args:
+        task_name: Name of the task
+        algo_name: Name of the algorithm
+        seed: Random seed
+        args: Dictionary of arguments
+        record_params: Optional list of parameter names to record in the directory name
+        base_dir: Optional base directory. If None, uses ROOT_DIR
+
+    Returns:
+        Path to the created log directory
+    """
+    if record_params is not None:
+        for param_name in record_params:
+            algo_name += f"&{param_name}={args[param_name]}"
+    timestamp = datetime.datetime.now().strftime("%y-%m%d-%H%M%S")
+    exp_name = f"seed_{seed}&timestamp_{timestamp}"
+    if base_dir is None:
+        base_dir = ROOT_DIR
+    log_dirs = os.path.join(base_dir, task_name, algo_name, exp_name)
+    os.makedirs(log_dirs)
+    return log_dirs
+
 def load_args(load_path: str) -> argparse.ArgumentParser:
     args_dict = {}
     with open(load_path,'r') as f:

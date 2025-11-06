@@ -10,13 +10,17 @@ import gymnasium as gym
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.callbacks import CallbackList
 from offlinerlkit.modules import EnsembleDynamicsModel
 from offlinerlkit.dynamics import EnsembleDynamics
-from offlinerlkit.policy.model_free.ppo import PPOPolicy, BestModelConvertCallback
+from offlinerlkit.policy.model_free.ppo import PPOPolicy
+from offlinerlkit.callbacks.ConvertAndSaveCallback import ConvertAndSaveCallback
 from offlinerlkit.utils.logger import Logger, make_log_dirs
+from offlinerlkit.callbacks.BestModelConvertCallback import BestModelConvertCallback
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from offlinerlkit.callbacks import TensorBoardLoggingCallback, FusionSpecificCallback, TrainingProgressCallback
+from envs.env_wrappers import GymnasiumWrapper
 
 
 def get_args():
@@ -48,10 +52,10 @@ def get_args():
                        help="Value network hidden layer dimensions")
     
     # training parameters
-    parser.add_argument("--total-timesteps", type=int, default=3000000)#1500_000 #5_010
-    parser.add_argument("--eval-freq", type=int, default=2_400)
+    parser.add_argument("--total-timesteps", type=int, default=800000)#1500_000 #5_010 
+    parser.add_argument("--eval-freq", type=int, default=10_000)
     parser.add_argument("--eval-episodes", type=int, default=6)
-    parser.add_argument("--save-freq", type=int, default=2_400)
+    parser.add_argument("--save-freq", type=int, default=10_000)
     
     # environment parameter
     parser.add_argument("--max-episode-length", type=int, default=150) #200
@@ -62,52 +66,9 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=5)
+    parser.add_argument("--cuda_id", type=int, default=3)
     return parser.parse_args()
     
-#action_space
-class GymnasiumWrapper(gym.Env):
-    """
-    self environment -> Gymnasium compatiable
-    """
-    def __init__(self, custom_env,action_dim, obs_dim):
-        super().__init__()
-        self.env = custom_env
-
-        # Set up the observation space 
-
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
-        )
-
-        self.action_space = gym.spaces.Box(
-                low=-1.0, high=1.0, shape=(action_dim,), dtype=np.float32
-            )
-
-    def reset(self, seed=None, options=None):
-        
-        obs = self.env.reset()
-        info = {}
-
-        # Handle torch.Tensor observations and flatten them to 1D
-        obs = obs.cpu().numpy().flatten()
-
-        return obs, info
-
-    def step(self, action):
-        if len(action.shape) == 1:
-            action = action.reshape(1, -1)  # Add batch dimension (1, action_dim)
-        result = self.env.step(action)
-        # Old format: (obs, reward, done, info)
-        obs, reward, done, info = result
-
-        # Handle torch.Tensor observations and flatten them to 1D
-        obs = obs.cpu().numpy().flatten()
-
-
-        return obs, reward, done, False, info  # add truncated
-
-
 
 
 def train(args=get_args()):
@@ -262,21 +223,50 @@ def train(args=get_args()):
 
     # evaluation callback
     if args.eval_freq > 0:
-        best_model_convert_callback = BestModelConvertCallback(
-            eval_env=eval_env,
-            save_path=os.path.join(output_dir, "checkpoint"),
-            pol_hidden_dims=args.pol_hidden_dims,
-            val_hidden_dims=args.val_hidden_dims,
-            n_eval_episodes=args.eval_episodes,
-            eval_freq=args.eval_freq,
+        eval_callback = EvalCallback(
+            eval_env,
+            best_model_save_path=os.path.join(output_dir, "best_model"),
             log_path=os.path.join(output_dir, "evaluations"),
+            eval_freq=args.eval_freq,
+            n_eval_episodes=args.eval_episodes,
             deterministic=True,
             render=False,
             verbose=1
+         )
+        callbacks.append(eval_callback)
+        # best_model_convert_callback = BestModelConvertCallback(
+        #     eval_env=eval_env,
+        #     save_path=os.path.join(output_dir, "checkpoint"),
+        #     pol_hidden_dims=args.pol_hidden_dims,
+        #     val_hidden_dims=args.val_hidden_dims,
+        #     n_eval_episodes=args.eval_episodes,
+        #     eval_freq=args.eval_freq,
+        #     log_path=os.path.join(output_dir, "evaluations"),
+        #     deterministic=True,
+        #     render=False,
+        #     verbose=1
+        # )
+        # callbacks.append(best_model_convert_callback)
+        # print(f"Best model checkpoint callback configured: Evaluating every {args.eval_freq} steps for {args.eval_episodes} episodes, saving best model to checkpoint/policy.pth")
+    if args.save_freq > 0:
+        checkpoint_callback = CheckpointCallback(
+            save_freq=args.save_freq,
+            save_path=os.path.join(output_dir, "checkpoints"),
+            name_prefix="ppo_model",
+            verbose=1
         )
-        callbacks.append(best_model_convert_callback)
-        print(f"Best model checkpoint callback configured: Evaluating every {args.eval_freq} steps for {args.eval_episodes} episodes, saving best model to checkpoint/policy.pth")
+        callbacks.append(checkpoint_callback)
 
+    # 权重转换和保存回调
+    convert_save_callback = ConvertAndSaveCallback(
+        save_path=os.path.join(output_dir, "checkpoint"),
+        save_freq=args.save_freq,
+        #hidden_dims=args.hidden_dims,
+        pol_hidden_dims=args.pol_hidden_dims,  
+        val_hidden_dims=args.val_hidden_dims,  
+        verbose=1
+    )
+    callbacks.append(convert_save_callback)
 
 
     # combine callbacks

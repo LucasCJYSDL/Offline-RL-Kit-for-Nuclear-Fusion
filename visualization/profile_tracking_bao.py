@@ -10,32 +10,35 @@ import json
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
-from visualization.controller_best import ControllerBest
-from visualization.plotter import plot_tracking_quantities, plot_actions
+from visualization.controller_new import Controller
+from visualization.plotter import plot_tracking_quantities, plot_actions, plot_tracking_quantities_with_units
+from envs.utils.profile_util import reconstruct_profile_from_state
 
 
 #!!! what you need to specify
 def get_args():
-    parser = argparse.ArgumentParser(description="Trajectory evaluation arguments using best model")
+    parser = argparse.ArgumentParser(description="Trajectory evaluation arguments")
 
     # basic settings
-    parser.add_argument("--seed", type=int, default=0, help="Random seed")
-    parser.add_argument("--cuda_id", type=int, default=4, help="CUDA device ID")
+    parser.add_argument("--seed", type=int, default=10, help="Random seed")
+    parser.add_argument("--cuda_id", type=int, default=5, help="CUDA device ID")
     parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control") 
-    parser.add_argument("--task", type=str, default="dens", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
-    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps800000_pol250x250_val250x250", help="Path to the actor checkpoint")
+    #parser.add_argument("--actor_path", type=str, default="log/dens/cql/seed_1&timestamp_25-1004-113803", help="Path to the actor checkpoint")
+    parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/bao/Training_untuned/rotation/rombrl&grad_mode=1&sl_weight=1000.0&actor_training_epoch=10&onpolicy_rollout_batch_size=2500&onpolicy_rollout_length=10&small_traj_batch=False/seed_1&timestamp_25-1031-122233", help="Path to the actor checkpoint")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[250, 250], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
+    parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL)")
 
-    parser.add_argument("--save_dir_name", type=str, default="dens_network_best", help="Subfolder name for saving results")
-    parser.add_argument("--output_base_dir", type=str, default="/home/scratch/jiayuc2/eval_bao", help="Base directory for output files")
+    parser.add_argument("--save_dir_name", type=str, default="test", help="Subfolder name for saving results")
+    parser.add_argument("--output_base_dir", type=str, default="/home/scratch/jiayuc2/bao/Eval_untuned", help="Base directory for output files")
     return parser.parse_args()
 
 
@@ -228,11 +231,8 @@ def run(args=get_args()) -> None:
     torch.backends.cudnn.deterministic = True
     env.seed(args.seed)
 
-    # load up the best model actor
-    print("=" * 80)
-    print("Loading BEST MODEL (from best_model.zip)")
-    print("=" * 80)
-    controller = ControllerBest(args)
+    # load up the actor
+    controller = Controller(args)
 
     all_results = {}
     
@@ -241,18 +241,29 @@ def run(args=get_args()) -> None:
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
 
     # Extract path information from actor_path to build save directory
-    # Extract all path parts after test_bao from actor_path
+    # Expected format: /home/scratch/jiayuc2/bao/Training_untuned/task/algo/seed_X&timestamp_Y
     actor_path_parts = args.actor_path.split('/')
-    # Find the path part containing experiment info (starting from after test_bao)
-    try:
-        test_bao_idx = actor_path_parts.index('test_bao')
-        experiment_path = '/'.join(actor_path_parts[test_bao_idx + 1:])
-    except ValueError:
-        # If test_bao not found, use the last two path parts
-        experiment_path = '/'.join(actor_path_parts[-2:]) if len(actor_path_parts) >= 2 else actor_path_parts[-1]
 
-    # Build final save path
-    log_folder = os.path.join(args.output_base_dir, args.save_dir_name, experiment_path)
+    # Extract task, algo, and seed_timestamp from the path
+    
+    # Find "Training_untuned" index to extract task/algo/seed_timestamp
+    training_idx = actor_path_parts.index('Training_untuned')
+    task_name = actor_path_parts[training_idx + 1]
+    algo_name = actor_path_parts[training_idx + 2]
+    seed_timestamp = actor_path_parts[training_idx + 3]
+
+        # Build final save path: output_base_dir/task/algo/seed_timestamp
+    log_folder = os.path.join(args.output_base_dir, task_name, algo_name, seed_timestamp)
+    # except (ValueError, IndexError):
+    #     # Fallback: use the last three path parts as task/algo/seed_timestamp
+    #     if len(actor_path_parts) >= 3:
+    #         task_name = actor_path_parts[-3]
+    #         algo_name = actor_path_parts[-2]
+    #         seed_timestamp = actor_path_parts[-1]
+    #         log_folder = os.path.join(args.output_base_dir, task_name, algo_name, seed_timestamp)
+    #     else:
+    #         # Last resort: use save_dir_name
+    #         log_folder = os.path.join(args.output_base_dir, args.save_dir_name)
 
     os.makedirs(log_folder, exist_ok=True)
     print(f"\nResults will be saved to: {log_folder}")
@@ -263,6 +274,7 @@ def run(args=get_args()) -> None:
 
         time_array = []
         target_quan_array, real_quan_array, cur_quan_array, real_act_array, cur_act_array = [], [], [], [], []
+        reconstruct_target_quan_array, reconstruct_real_quan_array, reconstruct_cur_quan_array, reconstruct_real_act_array, reconstruct_cur_act_array = [], [], [], [], []
         while True:
             action = controller.act(obs)
             next_obs, reward, terminal, info = env.step(action)
@@ -284,9 +296,18 @@ def run(args=get_args()) -> None:
 
             obs = next_obs
          # Calculate tracking metrics
+        reconstruct_real_quan_array = reconstruct_profile_from_state(args.task, np.array(real_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
+        reconstruct_target_quan_array = reconstruct_profile_from_state(args.task, np.array(target_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
+        reconstruct_cur_quan_array = reconstruct_profile_from_state(args.task, np.array(cur_quan_array), env.info, sa_processor.idx_list, unnormalize=False)
+
+        # Convert to numpy arrays
         target_quan_array = np.array(target_quan_array)
         cur_quan_array = np.array(cur_quan_array)
+        cur_act_array = np.array(cur_act_array)
+        reconstruct_target_quan_array = np.array(reconstruct_target_quan_array)
+        reconstruct_cur_quan_array = np.array(reconstruct_cur_quan_array)
         time_array = np.array(time_array)
+        #print(target_quan_array)
 
         # Calculate quantitative metrics
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
@@ -300,6 +321,7 @@ def run(args=get_args()) -> None:
         
         # make plots
         plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
+        plot_tracking_quantities_with_units(time_array,  reconstruct_target_quan_array, real_quan_array, reconstruct_cur_quan_array, args.task, shot, log_folder)
         if args.plot_actuators:
             plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
 
@@ -310,4 +332,3 @@ def run(args=get_args()) -> None:
 
 if __name__ == "__main__":
     run()
-
