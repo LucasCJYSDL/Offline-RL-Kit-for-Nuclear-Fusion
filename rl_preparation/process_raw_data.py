@@ -23,7 +23,7 @@ change_every = 50 # change the tracking target every () time steps
 #save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old" # the processed data will be saved here
 #save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old_betan" # need to change, the processed data will be saved here
 save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
-# save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old"
+#save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old"
 #save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl100_il13"
 os.makedirs(save_data_dir, exist_ok=True)
 
@@ -38,7 +38,7 @@ rl_data_path = save_data_dir + '/rl_data.h5'
 il_data_path = save_data_dir + '/il_data.h5'
 tracking_data_path = save_data_dir + '/tracking_data.h5'
 
-code_base = "old" # "old" or "new", old means the code in fusion_env, new means the code in profile_control
+code_base = "new" # "old" or "new", old means the code in fusion_env, new means the code in profile_control
 
 if __name__ == "__main__":
     # convert raw data to rl data

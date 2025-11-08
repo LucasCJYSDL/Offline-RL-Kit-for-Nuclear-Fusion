@@ -19,7 +19,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/home/scratch/jiayuc2/temp_1106/td3bc",
+                       default="/home/scratch/jiayuc2/temp_1106",
                        help="Base directory for saving all results")
     
     # basic settings
@@ -28,16 +28,16 @@ def get_args():
     parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
     # env settings
-    parser.add_argument("--env", type=str, default="profile_control") 
+    parser.add_argument("--env", type=str, default="profile_control")
     parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
-    parser.add_argument("--actor_path",type=str, default="/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit-for-Nuclear-Fusion/rl_scripts/log/rotation/td3bc/seed_1&timestamp_25-1029-223217")
+    parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/bao/Training_untuned/rotation/rambo/seed_1&timestamp_25-1030-141605")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
-    parser.add_argument("--stochastic_actor", type=bool, default=False, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256, 256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
     parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL)")
     return parser.parse_args()
@@ -111,7 +111,6 @@ def calculate_reconstruct_tracking_metrics(target_array, current_array):
     # Basic error calculation
     error = target_array - current_array
     mse_per_column = np.mean(error**2, axis=0) 
-    print(mse_per_column)
     return mse_per_column
 
 def print_tracking_metrics(shot_id, metrics, episode_reward, episode_length):
@@ -162,9 +161,10 @@ def save_tracking_results(all_results, log_folder):
                 }
 
         all_results['summary'] = summary_metrics
-
+   
     # Save results to JSON file
-    results_file = os.path.join(log_folder, 'tracking_results.json')
+    results_file = os.path.join(log_folder , 'tracking_results.json')
+    
     with open(results_file, 'w') as f:
         json.dump(all_results, f, indent=2)
 
@@ -194,7 +194,7 @@ def save_tracking_results(all_results, log_folder):
                 df_data.append(row)
 
         df = pd.DataFrame(df_data)
-        csv_file = os.path.join(log_folder, 'tracking_results.csv')
+        csv_file = os.path.join(log_folder,  'tracking_results.csv')
         df.to_csv(csv_file, index=False)
 
         print(f"\nResults saved to:")
@@ -226,7 +226,7 @@ def save_tracking_results(all_results, log_folder):
 
 
 
-def save_shot_data(shot_data_dict, save_folder, task_name, actor_info, seed):
+def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
     """
     Save shot data to npz file
     
@@ -237,7 +237,7 @@ def save_shot_data(shot_data_dict, save_folder, task_name, actor_info, seed):
         actor_info: Actor information for folder structure
     """
     # Create save directory structure
-    data_save_dir = os.path.join(save_folder, "saved_data", task_name, actor_info, seed)
+    data_save_dir = os.path.join(save_folder, "saved_data")
     os.makedirs(data_save_dir, exist_ok=True)
     
     # Save data to npz file
@@ -289,7 +289,7 @@ def run(args=get_args()) -> None:
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    log_folder = os.path.join(args.save_base_dir,args.task, "results", actor_info[-1])
+    log_folder = os.path.join(args.save_base_dir, actor_info[-2], args.task, "results", actor_info[-1], str(args.seed))
     os.makedirs(log_folder, exist_ok=True)
 
     for shot in shot_list:
@@ -334,7 +334,7 @@ def run(args=get_args()) -> None:
 
         # Calculate quantitative metrics
         tracking_metrics = calculate_tracking_metrics(target_quan_array, cur_quan_array)
-        mse_reconstruct = calculate_reconstruct_tracking_metrics(reconstruct_target_quan_array, reconstruct_target_quan_array)
+        mse_reconstruct = calculate_reconstruct_tracking_metrics(reconstruct_target_quan_array, reconstruct_cur_quan_array)
         all_results[f'shot_{shot}'] = {
             'shot_id': shot,
             'episode_reward': episode_reward,
@@ -365,7 +365,12 @@ def run(args=get_args()) -> None:
     
     # Save shot data for comparison
     actor_info_str = "_".join(actor_info[1:])  # Join actor path components
-    save_shot_data(shot_data_dict, args.save_base_dir, args.task, actor_info_str, args.seed)
+    save_shot_data(shot_data_dict, log_folder, args.task, actor_info_str)
 
 if __name__ == "__main__":
-    run()
+    seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  
+    for seed in seeds:
+        print(f"\nRunning experiment with seed = {seed}")
+        args = get_args()  
+        args.seed = seed   
+        run(args)
