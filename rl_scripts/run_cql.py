@@ -46,7 +46,7 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=3)
+    parser.add_argument("--cuda_id", type=int, default=1)
 
     return parser.parse_args()
 
@@ -132,8 +132,19 @@ def train(args=get_args()):
     )
     buffer.load_dataset(offline_data)
 
+    record_params = [
+        "cql_weight",
+        "temperature",
+        "max_q_backup",
+        "deterministic_backup",
+        "with_lagrange",
+        "lagrange_threshold",
+        "cql_alpha_lr",
+        "num_repeat_actions"
+    ]
+
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
+    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params)
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",

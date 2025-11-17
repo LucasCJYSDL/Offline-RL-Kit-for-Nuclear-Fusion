@@ -57,7 +57,10 @@ for algo, algo_dir in alg_base_dirs.items():
     mean = mse_array.mean(axis=0)
     se = mse_array.std(axis=0, ddof=1) / np.sqrt(mse_array.shape[0])
 
-    results[algo] = {"mean": mean, "se": se}
+    mean_all = mse_array.mean()                                  
+    se_all   = mse_array.std(ddof=1) / np.sqrt(mse_array.size)  
+
+    results[algo] = {"mean": mean, "se": se, "mean_all": mean_all, "se_all":se_all}
 
 columns = []
 for i in range(33):
@@ -72,6 +75,8 @@ for algo in alg_base_dirs.keys():
     for i in range(33):
         df.loc[algo, f"ρ{i+1}_mean"] = mean[i]
         df.loc[algo, f"ρ{i+1}_SE"] = se[i]
+    df.loc[algo, f"mean"] = results[algo]["mean_all"]
+    df.loc[algo, f"SE"] = results[algo]["se_all"]
 
 
 df.index.name = "Algorithm"

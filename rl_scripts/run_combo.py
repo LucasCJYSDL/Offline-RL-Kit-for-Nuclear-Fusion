@@ -47,7 +47,7 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
 
-    parser.add_argument("--cql-weight", type=float, default=5.0)
+    parser.add_argument("--cql-weight", type=float, default=5)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=True)
@@ -69,11 +69,16 @@ def get_args():
     parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)
 
+    # Early stopping parameters
+    parser.add_argument("--early-stop", action="store_true", help="Enable early stopping")
+    parser.add_argument("--early-stop-wait-epochs", type=int, default=30, help="Patience epochs for early stopping")
+    parser.add_argument("--reward_improvement_threshold", type=float, default=100, help="Minimum reward improvement threshold")
+
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=0)
+    parser.add_argument("--cuda_id", type=int, default=3)
 
     return parser.parse_args()
 
@@ -188,8 +193,22 @@ def train(args=get_args()):
         device=args.device
     )
 
+    record_params = [
+        "cql_weight",
+        "temperature", 
+        "max_q_backup",
+        "deterministic_backup",
+        "with_lagrange",
+        "lagrange_threshold",
+        "cql_alpha_lr",
+        "num_repeat_actions",
+        "uniform_rollout",
+        "rho_s"
+    ]
+
+
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
+    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params)
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",
@@ -213,7 +232,10 @@ def train(args=get_args()):
         batch_size=args.batch_size,
         real_ratio=args.real_ratio,
         eval_episodes=args.eval_episodes,
-        lr_scheduler=lr_scheduler
+        lr_scheduler=lr_scheduler,
+        # Early stopping parameters
+        early_stop_wait_epochs=args.early_stop_wait_epochs if args.early_stop else None,
+        reward_improvement_threshold=args.reward_improvement_threshold  if args.early_stop else None,
     )
     
     policy_trainer.train()

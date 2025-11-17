@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("--num-critics", type=int, default=50)
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=False)
-    parser.add_argument("--eta", type=float, default=1.0)
+    parser.add_argument("--eta", type=float, default=0.5)
     parser.add_argument("--normalize-reward", type=bool, default=False)
 
     parser.add_argument("--epoch", type=int, default=1000)
@@ -44,6 +44,11 @@ def get_args():
     parser.add_argument("--task", type=str, default="rotation")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=1)
+
+    parser.add_argument("--early-stop", action="store_true")
+    parser.add_argument("--early-stop-patience", type=int, default=50)
+    parser.add_argument("--early-stop-threshold", type=float, default=200)
+    
 
     return parser.parse_args()
 
@@ -124,6 +129,20 @@ def train(args=get_args()):
         device=args.device
     )
     buffer.load_dataset(offline_data)
+
+    record_params = [
+        "cql_weight",
+        "temperature", 
+        "max_q_backup",
+        "deterministic_backup",
+        "with_lagrange",
+        "lagrange_threshold",
+        "cql_alpha_lr",
+        "num_repeat_actions",
+        "uniform_rollout",
+        "rho_s"
+    ]
+
 
     # log
     log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["num_critics", "eta"])
