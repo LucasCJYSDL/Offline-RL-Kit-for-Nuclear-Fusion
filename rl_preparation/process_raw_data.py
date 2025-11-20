@@ -24,8 +24,8 @@ change_every = 50 # change the tracking target every () time steps
 #save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old_betan" # need to change, the processed data will be saved here
 # save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
 # save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old"
-save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl100_il13"
-# save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il100"
+#save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl100_il13"
+save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il100"
 os.makedirs(save_data_dir, exist_ok=True)
 
 #rl_shot_list = list(range(reference_shot - 1000, reference_shot + 1000)) # these shots are used for rl training

@@ -4,20 +4,20 @@ import pandas as pd
 
 
 alg_base_dirs = {
-    "PPO": "/home/scratch/jiayuc2/temp_1106/ppo_prof_control_zipfit_dens_optimized_lite_256/rotation/results/policy",
-    "GCIL":"/home/scratch/jiayuc2/temp_1106/gcil/rotation/results/seed_1&timestamp_25-1101-050601",
-    "MPPI":"/home/scratch/jiayuc2/temp_1106/mppi&horizon=40&num_samples=1000&lam=2.0&penalty_coef=2.5/rotation/results/seed_1&timestamp_25-1101-124903",
-    "CQL": "/home/scratch/jiayuc2/temp_1106/cql/rotation/results/seed_1&timestamp_25-1029-214055",
-    "EDAC": "/home/scratch/jiayuc2/temp_1106/edac&num_critics=50&eta=1.0/rotation/results/seed_1&timestamp_25-1029-215514",
-    "TD3BC": "/home/scratch/jiayuc2/temp_1106/td3bc/rotation/results/seed_1&timestamp_25-1029-223217",
-    "MCQ":"/home/scratch/jiayuc2/temp_1106/mcq/rotation/results/seed_1&timestamp_25-1030-140936",
-    "COMBO": "/home/scratch/jiayuc2/temp_1106/combo/rotation/results/seed_1&timestamp_25-1030-121418",
-    "IQL":"/home/scratch/jiayuc2/temp_1106/iql/rotation/results/seed_1&timestamp_25-1030-140800",
-    "MOPO": "/home/scratch/jiayuc2/temp_1106/mopo&penalty_coef=2.5&rollout_length=5/rotation/results/seed_1&timestamp_25-1030-131737",                    
-    "MOBILE": "/home/scratch/jiayuc2/temp_1106/mobile&penalty_coef=1.5&rollout_length=5&real_ratio=0.05/rotation/results/seed_1&timestamp_25-1104-044715",
-    "BAMCTS":"/home/scratch/jiayuc2/temp_1106/bambrl_mcts&penalty_coef=1.5&rollout_length=3&real_ratio=0.05/rotation/results/seed_1&timestamp_25-1030-140607",
-    "ROMBRL":"/home/scratch/jiayuc2/temp_1106/rombrl&grad_mode=1&sl_weight=1000.0&actor_training_epoch=10&onpolicy_rollout_batch_size=2500&onpolicy_rollout_length=10&small_traj_batch=False/rotation/results/seed_1&timestamp_25-1031-122233",
-    "RAMBO":"/home/scratch/jiayuc2/temp_1106/rambo/rotation/results/seed_1&timestamp_25-1030-141605",
+    # "PPO": "/home/scratch/jiayuc2/temp_1106/ppo_prof_control_zipfit_dens_optimized_lite_256/rotation/results/policy",
+    # "GCIL":"/home/scratch/jiayuc2/temp_1106/gcil/rotation/results/seed_1&timestamp_25-1101-050601",
+    # "MPPI":"/home/scratch/jiayuc2/temp_1106/mppi&horizon=40&num_samples=1000&lam=2.0&penalty_coef=2.5/rotation/results/seed_1&timestamp_25-1101-124903",
+    "CQL": "/home/scratch/jiayuc2/temp_1117/cql&cql_weight=5.0&temperature=1.0&max_q_backup=False&deterministic_backup=True&with_lagrange=False&lagrange_threshold=10.0&cql_alpha_lr=0.0003&num_repeat_actions=10/rotation/results/seed_1&timestamp_25-1116-124536",
+    "EDAC": "/home/scratch/jiayuc2/temp_1117/edac&num_critics=50&eta=1.0/rotation/results/seed_1&timestamp_25-1031-105230",
+    "TD3BC": "/home/scratch/jiayuc2/temp_1117/td3bc/rotation/results/seed_1&timestamp_25-1031-110054",
+    # "MCQ":"/home/scratch/jiayuc2/temp_1106/mcq/rotation/results/seed_1&timestamp_25-1030-140936",
+    "COMBO": "/home/scratch/jiayuc2/temp_1117/combo/rotation/results/seed_1&timestamp_25-1101-012025",
+    # "IQL":"/home/scratch/jiayuc2/temp_1106/iql/rotation/results/seed_1&timestamp_25-1030-140800",
+    "MOPO": "/home/scratch/jiayuc2/temp_1117/mopo&penalty_coef=2.5&rollout_length=5/rotation/results/seed_1&timestamp_25-1101-004542",                    
+    "MOBILE": "/home/scratch/jiayuc2/temp_1117/mobile&penalty_coef=1.5&rollout_length=5&real_ratio=0.05/rotation/results/seed_1&timestamp_25-1116-132552",
+    # "BAMCTS":"/home/scratch/jiayuc2/temp_1106/bambrl_mcts&penalty_coef=1.5&rollout_length=3&real_ratio=0.05/rotation/results/seed_1&timestamp_25-1030-140607",
+    # "ROMBRL":"/home/scratch/jiayuc2/temp_1106/rombrl&grad_mode=1&sl_weight=1000.0&actor_training_epoch=10&onpolicy_rollout_batch_size=2500&onpolicy_rollout_length=10&small_traj_batch=False/rotation/results/seed_1&timestamp_25-1031-122233",
+    # "RAMBO":"/home/scratch/jiayuc2/temp_1106/rambo/rotation/results/seed_1&timestamp_25-1030-141605",
    
     
    
@@ -80,7 +80,7 @@ for algo in alg_base_dirs.keys():
 
 
 df.index.name = "Algorithm"
-save_path = "/home/scratch/jiayuc2/temp_1106/tracking_error_summary.csv"
+save_path = "/home/scratch/jiayuc2/temp_1117/tracking_error_summary.csv"
 df.to_csv(save_path)
 
 print(f"\n Saved summary table to:\n{save_path}")

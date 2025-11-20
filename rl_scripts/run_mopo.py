@@ -59,7 +59,7 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=5)
+    parser.add_argument("--cuda_id", type=int, default=7)
 
     return parser.parse_args()
 

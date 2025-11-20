@@ -109,6 +109,9 @@ class MOBILEPolicy(BasePolicy):
         rollout_length = init_samples["full_observations"].shape[1]
         idx_list = np.array(range(0, init_samples["full_observations"].shape[0]))
 
+        num_ensemble = self.dynamics.model.num_ensemble
+        fixed_model_idxs = np.random.randint(0, num_ensemble, size=len(idx_list))
+
         full_observations = init_samples["full_observations"][:, 0]
         full_actions = init_samples["full_actions"][:, 0]
         pre_actions = init_samples["pre_actions"][:, 0]
@@ -128,7 +131,7 @@ class MOBILEPolicy(BasePolicy):
             # new for mobile
             rollout_transitions["hidden_states"].append(self.dynamics.get_memory()[idx_list])
 
-            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs, init_samples["batch_idx_list"][t])
+            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs, init_samples["batch_idx_list"][t],fixed_model_idxs=fixed_model_idxs)
             next_observations = self.sa_processor.get_rl_state(next_observations, init_samples["batch_idx_list"][t+1])
 
             rollout_transitions["obss"].append(observations[idx_list])

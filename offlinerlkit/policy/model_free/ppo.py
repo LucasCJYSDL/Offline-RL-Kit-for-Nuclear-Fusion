@@ -47,6 +47,8 @@ class FusionPPOEnv(gym.Env):
 
         # Used for logging episode statistics (for SB3 rollout metrics)
         self.episode_reward = 0.0
+
+        self.current_model_idx = None
         
     def reset(self, seed=None, options=None):
 
@@ -64,6 +66,10 @@ class FusionPPOEnv(gym.Env):
         self.episode_length = 0
         #save all
         self.current_global_idx = idx
+
+        num_models = self.dynamics.model.num_ensemble
+        self.current_model_idx = np.random.randint(0, num_models)
+
         self.dynamics.reset()
         obs = self.offline_data['observations'][idx].copy()
         self.episode_reward = 0.0
@@ -94,8 +100,11 @@ class FusionPPOEnv(gym.Env):
             time_terminals=np.array([current_time_terminals]),
             state_idxs=self.state_idxs,
             #batch_idxs=np.array([valid_time_step])
-            batch_idxs=np.array([self.current_global_idx])
+            batch_idxs=np.array([self.current_global_idx]),
+            fixed_model_idx=self.current_model_idx
         )
+        if self.episode_length % 10 == 0:
+            print(f"[Step {self.episode_length}] Using model {self.current_model_idx}, actual used: {info['model_idxs'][0]}")
 
         # Get the complete next state from info
         self.current_full_state = info["next_full_observations"][0]

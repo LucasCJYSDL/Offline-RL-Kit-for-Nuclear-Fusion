@@ -18,7 +18,7 @@ from rl_preparation.get_rl_data_envs import get_rl_data_envs
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo-name", type=str, default="cql")
-    parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256,256])#[256,256,256]
+    parser.add_argument("--hidden-dims", type=int, nargs='*', default= [256,256,256] )#[256,256]
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)

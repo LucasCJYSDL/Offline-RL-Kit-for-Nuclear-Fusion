@@ -35,6 +35,7 @@ walker2d-medium-expert-v2: rollout-length=1, cql-weight=5.0
 
 
 def get_args():
+    """Get arguments - only called when script is run directly, not from tuner"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo-name", type=str, default="combo")
     parser.add_argument("--actor-lr", type=float, default=1e-4)
@@ -74,16 +75,29 @@ def get_args():
     parser.add_argument("--early-stop-wait-epochs", type=int, default=30, help="Patience epochs for early stopping")
     parser.add_argument("--reward_improvement_threshold", type=float, default=100, help="Minimum reward improvement threshold")
 
-    #!!! what you need to specify
-    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation") #?
+    # Environment settings
+    parser.add_argument("--env", type=str, default="profile_control")
+    parser.add_argument("--task", type=str, default="rotation")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=3)
+    parser.add_argument("--cuda_id", type=int, default=7)
 
     return parser.parse_args()
 
 
-def train(args=get_args()):
+def train(args=None):
+    """
+    Train function that accepts either:
+    1. argparse.Namespace object (from tuner.py)
+    2. None (gets args from command line via get_args())
+    """
+    # If args is None, get from command line
+    if args is None:
+        args = get_args()
+    
+    # Convert attribute names with hyphens to underscores for consistency
+    # This handles the case where args come from command line (with hyphens)
+    args = _normalize_args(args)
+    
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device)
@@ -206,7 +220,6 @@ def train(args=get_args()):
         "rho_s"
     ]
 
-
     # log
     log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params)
     # key: output file name, value: output handler type
@@ -217,7 +230,6 @@ def train(args=get_args()):
         "tb": "tensorboard"
     }
     logger = Logger(log_dirs, output_config)
-    # logger.log_hyperparameters(vars(args))
 
     # create policy trainer
     policy_trainer = MBPolicyTrainer(
@@ -234,11 +246,25 @@ def train(args=get_args()):
         eval_episodes=args.eval_episodes,
         lr_scheduler=lr_scheduler,
         # Early stopping parameters
-        early_stop_wait_epochs=args.early_stop_wait_epochs if args.early_stop else None,
-        reward_improvement_threshold=args.reward_improvement_threshold  if args.early_stop else None,
+        early_stop_wait_epochs=args.early_stop_wait_epochs if hasattr(args, 'early_stop') and args.early_stop else None,
+        reward_improvement_threshold=args.reward_improvement_threshold if hasattr(args, 'early_stop') and args.early_stop else None,
     )
     
     policy_trainer.train()
+
+
+def _normalize_args(args):
+    """Convert argument names from hyphenated to underscored format"""
+    arg_dict = vars(args)
+    normalized = {}
+    
+    for key, value in arg_dict.items():
+        # Replace hyphens with underscores
+        normalized_key = key.replace('-', '_')
+        normalized[normalized_key] = value
+    
+    # Create new Namespace with normalized keys
+    return argparse.Namespace(**normalized)
 
 
 if __name__ == "__main__":

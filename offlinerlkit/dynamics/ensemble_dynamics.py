@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from scipy.stats import norm
 
-from typing import Tuple, Dict
+from typing import Tuple, Dict,Optional
 
 
 class EnsembleDynamics:
@@ -37,7 +37,9 @@ class EnsembleDynamics:
         time_steps, 
         time_terminals, 
         state_idxs,
-        batch_idxs
+        batch_idxs,
+        fixed_model_idx: Optional[int] = None, #for ppo train
+        fixed_model_idxs: Optional[np.ndarray] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]:
         info = {}
         net_input = np.concatenate([cur_state, pre_action, cur_action-pre_action], axis=-1).astype(np.float32)
@@ -48,7 +50,19 @@ class EnsembleDynamics:
 
         # choose one model from ensemble
         num_models, batch_size, _ = ensemble_samples.shape
-        model_idxs = self.model.random_member_idxs(batch_size)
+        # if fixed_model_idx is not None:
+        #     model_idxs = np.full(batch_size, fixed_model_idx, dtype=np.int32)
+        # else:
+        #     model_idxs = self.model.random_member_idxs(batch_size)
+        if fixed_model_idxs is not None:
+            assert len(fixed_model_idxs) == batch_size, \
+                f"fixed_model_idxs length {len(fixed_model_idxs)} != batch_size {batch_size}"
+            model_idxs = fixed_model_idxs
+        elif fixed_model_idx is not None:
+            model_idxs = np.full(batch_size, fixed_model_idx, dtype=np.int32)
+        else:
+            model_idxs = self.model.random_member_idxs(batch_size)
+        
         samples = ensemble_samples[model_idxs, np.arange(batch_size)]
         info["next_full_observations"] = samples.copy()
         time_steps = time_steps + 1

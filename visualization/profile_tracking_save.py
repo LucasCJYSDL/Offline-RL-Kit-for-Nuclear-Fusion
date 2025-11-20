@@ -34,10 +34,10 @@ def get_args():
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
-    parser.add_argument("--actor_path",type=str, default="/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit-for-Nuclear-Fusion/rl_scripts/log/rotation/edac&num_critics=50&eta=1.0/seed_1&timestamp_25-1031-105230")
+    parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/fy/log/rotation/cql&cql_weight=5.0&temperature=1.0&max_q_backup=False&deterministic_backup=True&with_lagrange=False&lagrange_threshold=10.0&cql_alpha_lr=0.0003&num_repeat_actions=10/seed_1&timestamp_25-1116-124536")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
     parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL)")
     return parser.parse_args()
@@ -368,10 +368,10 @@ def run(args=get_args()) -> None:
     save_shot_data(shot_data_dict, log_folder, args.task, actor_info_str)
 
 if __name__ == "__main__":
-    # seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  
-    # for seed in seeds:
-    #     print(f"\nRunning experiment with seed = {seed}")
-    #     args = get_args()  
-    #     args.seed = seed   
-    #     run(args)
-    run()
+    seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  
+    for seed in seeds:
+        print(f"\nRunning experiment with seed = {seed}")
+        args = get_args()  
+        args.seed = seed   
+        run(args)
+    # run()
