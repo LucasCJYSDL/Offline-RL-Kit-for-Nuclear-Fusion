@@ -25,14 +25,15 @@ change_every = 50 # change the tracking target every () time steps
 # save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
 # save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old"
 #save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl100_il13"
-save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il100"
+save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200"
+# save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_old"
 os.makedirs(save_data_dir, exist_ok=True)
 
 #rl_shot_list = list(range(reference_shot - 1000, reference_shot + 1000)) # these shots are used for rl training
 # rl_shot_list = list(range(reference_shot - 6, reference_shot + 7)) # these shots are used for rl training
 rl_shot_list = list(range(reference_shot - 200, reference_shot + 200))
 # il_shot_list = list(range(reference_shot - 6, reference_shot + 7)) # these shots are used to imitate
-il_shot_list =list(range(reference_shot - 100, reference_shot + 100))
+il_shot_list =list(range(reference_shot - 200, reference_shot + 200))
 # tracking_shot_list = list(pange(reference_shot - 5, reference_shot + 5)) # we would test the policy by tracking shots in this list 
 tracking_shot_list =  [161409, 161410, 161412]
 # the processed data will be saved in the same directory as the raw data
@@ -40,7 +41,7 @@ rl_data_path = save_data_dir + '/rl_data.h5'
 il_data_path = save_data_dir + '/il_data.h5'
 tracking_data_path = save_data_dir + '/tracking_data.h5'
 
-code_base = "new" # "old" or "new", old means the code in fusion_env, new means the code in profile_control
+code_base = "old" # "old" or "new", old means the code in fusion_env, new means the code in profile_control
 
 if __name__ == "__main__":
     # convert raw data to rl data

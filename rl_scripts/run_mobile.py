@@ -14,7 +14,8 @@ from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import MOBILEPolicy
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
-
+from rl_preparation.get_rl_data_envs import get_rl_data_envs
+from envs.utils.arg_utils import normalize_args
 
 """
 suggested hypers
@@ -53,8 +54,8 @@ def get_args():
 
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
-    parser.add_argument("--rollout-length", type=int, default=5)
-    parser.add_argument("--penalty-coef", type=float, default=1.5)
+    parser.add_argument("--rollout-length", type=int, default=1)
+    parser.add_argument("--penalty-coef", type=float, default=0.5)
     parser.add_argument("--num-samples", type=int, default=10)
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.05)
@@ -69,12 +70,19 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=7)
+    parser.add_argument("--cuda_id", type=int, default=4)
 
     return parser.parse_args()
 
 
-def train(args=get_args()):
+def train(args=None):
+    # If args is None, get from command line
+    if args is None:
+        args = get_args()
+    
+    # Convert attribute names with hyphens to underscores for consistency
+    # This handles the case where args come from command line (with hyphens)
+    args = normalize_args(args)
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device)
@@ -184,7 +192,7 @@ def train(args=get_args()):
     )
 
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length", "real_ratio"])
+    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length"])
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",

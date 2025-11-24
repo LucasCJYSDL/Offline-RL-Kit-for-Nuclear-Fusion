@@ -209,15 +209,7 @@ def train(args=None):
 
     record_params = [
         "cql_weight",
-        "temperature", 
-        "max_q_backup",
-        "deterministic_backup",
-        "with_lagrange",
-        "lagrange_threshold",
-        "cql_alpha_lr",
-        "num_repeat_actions",
-        "uniform_rollout",
-        "rho_s"
+        "rollout_length",
     ]
 
     # log

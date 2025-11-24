@@ -178,6 +178,7 @@ def get_raw_data(offline_data_dir, action_bound_file, state_bound_file, shot_lis
     offline_data['time_step'] = np.array(offline_data['time_step'])
     offline_data['terminals'] = np.array(offline_data['terminals'])
 
+
     return offline_data
 
 
@@ -187,6 +188,11 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
     il_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
                 'terminals': [], 'time_step': [], 'traj_start_indices': []}
     tracking_data = {}
+    
+   
+    rl_shots_used = set()
+    il_shots_used = set()
+    tracking_shots_used = set()
     
     # load the rnn model ensemble used for training
     ensemble = load_ensemble_from_parent_dir(parent_dir=model_dir)
@@ -207,6 +213,7 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
         if cur_shot in tracking_shot_list:
             terminated = False
             tracking_data[cur_shot] = {'tracking_states': [], 'tracking_next_states': [], 'tracking_pre_actions': [], 'tracking_actions': []}
+            tracking_shots_used.add(cur_shot)
         
         while True:                
 
@@ -218,6 +225,7 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
             cur_action = pre_action + action_delta
 
             if cur_shot in rl_shot_list:
+                rl_shots_used.add(cur_shot)
                 rl_data['observations'].append(cur_state.copy())
                 rl_data['pre_actions'].append(pre_action.copy())
                 rl_data['actions'].append(cur_action.copy())
@@ -229,6 +237,7 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
                     rl_data['traj_start_indices'].append(current_idx)
             
             if cur_shot in il_shot_list:
+                il_shots_used.add(cur_shot)
                 il_data['observations'].append(cur_state.copy())
                 il_data['pre_actions'].append(pre_action.copy())
                 il_data['actions'].append(cur_action.copy())
@@ -279,7 +288,22 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
             #     cur_state = next_state # TODO: which one is better
             # else:
             cur_state = offline_dst['observations'][t]
-            
+    
+    output_dir = os.path.dirname(rl_data_path)
+    with open(os.path.join(output_dir, 'used_shots_info.txt'), 'w') as f:
+        f.write(f"RL shots used ({len(rl_shots_used)}):\n")
+        for shot in sorted(rl_shots_used):
+            f.write(f"  {shot}\n")
+        f.write(f"\nIL shots used ({len(il_shots_used)}):\n")
+        for shot in sorted(il_shots_used):
+            f.write(f"  {shot}\n")
+        f.write(f"\nTracking shots used ({len(tracking_shots_used)}):\n")
+        for shot in sorted(tracking_shots_used):
+            f.write(f"  {shot}\n")
+    
+    print(f"Total RL shots used: {len(rl_shots_used)}")
+    print(f"Total IL shots used: {len(il_shots_used)}")
+    print(f"Total tracking shots used: {len(tracking_shots_used)}")
 
     # post process
     _post_process(rl_data, offline_dst)

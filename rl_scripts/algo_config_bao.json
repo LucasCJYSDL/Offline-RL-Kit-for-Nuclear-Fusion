@@ -1,0 +1,102 @@
+{"iql": {
+    "tunable_params": {
+      "expectile": {
+        "type": "float",
+        "low": 0.5,
+        "high": 0.95
+      },
+      "temperature": {
+        "type": "float",
+        "low": 0.1,
+        "high": 10.0,
+        "log": true
+      }
+    },
+    "train_module": "run_iql",
+    "record_params": ["expectile", "temperature"],
+    "default_params": {
+      "algo_name": "iql",
+      "hidden_dims": [256, 256],
+      "actor_lr": 3e-4,
+      "critic_q_lr": 3e-4,
+      "critic_v_lr": 3e-4,
+      "dropout_rate": null,
+      "lr_decay": true,
+      "gamma": 0.99,
+      "tau": 0.005,
+      "epoch": 1000,
+      "step_per_epoch": 1000,
+      "eval_episodes": 5,
+      "batch_size": 256
+    },
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1000,
+    "tuning_eval_episodes": 3,
+    "eval_last_n_epochs": 10,
+    "enable_early_stop": false,
+    "reward_column": null
+  },
+  "mcq":{
+    "tunable_params": {
+      "lmbda": {
+        "type": "float",
+        "low": 0.6,
+        "high": 0.95
+      },
+      "num_sampled_actions": {
+        "type": "categorical",
+        "choices": [10, 20]
+      }
+    },
+    "train_module": "run_mcq",
+    "record_params": ["lmbda", "num_sampled_actions"],
+    "default_params": {
+      "algo_name": "mcq",
+      "actor_lr": 3e-4,
+      "critic_lr": 3e-4,
+      "hidden_dims": [400, 400],
+      "gamma": 0.99,
+      "tau": 0.005,
+      "alpha": 0.2,
+      "auto_alpha": true,
+      "target_entropy": null,
+      "alpha_lr": 3e-4,
+      "behavior_policy_lr": 1e-3,
+      "epoch": 1000,
+      "step_per_epoch": 1000,
+      "eval_episodes": 5,
+      "batch_size": 256
+    },
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1000,
+    "tuning_eval_episodes": 3,
+    "eval_last_n_epochs": 10,
+    "enable_early_stop": false,
+    "reward_column": null
+  },
+  "gcil": {
+    "tunable_params": {
+      "batch_size": {
+        "type": "categorical",
+        "choices": [64, 128, 256, 512]
+      }
+    },
+    "train_module": "run_gcil",
+    "record_params": ["batch_size"],
+    "default_params": {
+      "algo_name": "gcil",
+      "actor_lr": 3e-4,
+      "hidden_dims": [256, 256, 256],
+      "stochastic_actor": true,
+      "epoch": 1000,
+      "step_per_epoch": 1000,
+      "eval_episodes": 5
+    },
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1000,
+    "tuning_eval_episodes": 3,
+    "eval_last_n_epochs": 10,
+    "enable_early_stop": false,
+    "reward_column": null
+  }
+}

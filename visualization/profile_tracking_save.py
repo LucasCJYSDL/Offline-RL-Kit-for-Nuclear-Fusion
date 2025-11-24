@@ -19,7 +19,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/home/scratch/jiayuc2/temp_1117",
+                       default="/home/scratch/jiayuc2/temp_1124",
                        help="Base directory for saving all results")
     
     # basic settings
@@ -28,13 +28,13 @@ def get_args():
     parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
     # env settings
-    parser.add_argument("--env", type=str, default="profile_control")
+    parser.add_argument("--env", type=str, default="profile_control")#profile_control
     parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
 
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
-    parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/fy/log/rotation/cql&cql_weight=5.0&temperature=1.0&max_q_backup=False&deterministic_backup=True&with_lagrange=False&lagrange_threshold=10.0&cql_alpha_lr=0.0003&num_repeat_actions=10/seed_1&timestamp_25-1116-124536")
+    parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/fy/log_new/rotation/ppo&clip_range=0.148/seed_1&timestamp_25-1124-025000")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
@@ -267,8 +267,12 @@ def run(args=get_args()) -> None:
     # register an env
     args.device = torch.device("cuda".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=args.il_actor) # these are the data and env used to train the actor
-    args.obs_dim = offline_data['observations'].shape[1]
-    args.action_dim = offline_data['actions'].shape[1]
+    if args.env == "fusion_env":
+        args.obs_dim = offline_data['obs_dim']
+        args.action_dim = offline_data['act_dim']
+    else:
+        args.obs_dim = offline_data['observations'].shape[1]
+        args.action_dim = offline_data['actions'].shape[1]
     args.max_action = 1.0
 
     # set seeds

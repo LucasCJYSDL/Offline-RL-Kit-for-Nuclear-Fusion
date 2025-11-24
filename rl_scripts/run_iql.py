@@ -12,7 +12,7 @@ from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, DiagGaussian
 from offlinerlkit.buffer import ReplayBuffer
 #from offlinerlkit.utils.logger import Logger, make_log_dirs
-from offlinerlkit.utils.logger import Logger, make_log_dirs_new
+from offlinerlkit.utils.logger import Logger, make_log_dirs_new,make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import IQLPolicy
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
@@ -161,8 +161,8 @@ def train(args=get_args()):
     buffer.load_dataset(offline_data) ## bug fix
 
     # log
-    #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
-    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_100_untuned")
+    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args),record_params=["expectile", "temperature"])
+    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_100_untuned")
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",

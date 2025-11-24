@@ -7,6 +7,7 @@ import torch
 
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import Actor, Critic
 from offlinerlkit.utils.noise import GaussianNoise
@@ -16,6 +17,7 @@ from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import TD3BCPolicy
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
+from envs.utils.arg_utils import normalize_args
 
 """
 suggested hypers
@@ -48,7 +50,15 @@ def get_args():
     return parser.parse_args()
 
 
-def train(args=get_args()):
+
+def train(args=None):
+    # If args is None, get from command line
+    if args is None:
+        args = get_args()
+    
+    # Convert attribute names with hyphens to underscores for consistency
+    # This handles the case where args come from command line (with hyphens)
+    args = normalize_args(args)
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device)
@@ -112,7 +122,7 @@ def train(args=get_args()):
     )
 
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
+    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["alpha"])
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",
@@ -136,6 +146,8 @@ def train(args=get_args()):
 
     # train
     policy_trainer.train()
+
+
 
 
 if __name__ == "__main__":

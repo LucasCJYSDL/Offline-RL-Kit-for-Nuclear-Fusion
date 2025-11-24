@@ -14,7 +14,7 @@ from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import EDACPolicy
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
-
+from envs.utils.arg_utils import normalize_args
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -53,7 +53,14 @@ def get_args():
     return parser.parse_args()
 
 
-def train(args=get_args()):
+def train(args=None):
+     # If args is None, get from command line
+    if args is None:
+        args = get_args()
+    
+    # Convert attribute names with hyphens to underscores for consistency
+    # This handles the case where args come from command line (with hyphens)
+    args = normalize_args(args)
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device)
@@ -130,18 +137,7 @@ def train(args=get_args()):
     )
     buffer.load_dataset(offline_data)
 
-    record_params = [
-        "cql_weight",
-        "temperature", 
-        "max_q_backup",
-        "deterministic_backup",
-        "with_lagrange",
-        "lagrange_threshold",
-        "cql_alpha_lr",
-        "num_repeat_actions",
-        "uniform_rollout",
-        "rho_s"
-    ]
+    
 
 
     # log
@@ -170,6 +166,7 @@ def train(args=get_args()):
     
     # train
     policy_trainer.train()
+
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ from offlinerlkit.callbacks.BestModelConvertCallback import BestModelConvertCall
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from offlinerlkit.callbacks import TensorBoardLoggingCallback, FusionSpecificCallback, TrainingProgressCallback
 from envs.env_wrappers import GymnasiumWrapper
-
+from envs.utils.arg_utils import normalize_args
 
 def get_args():
     parser = argparse.ArgumentParser(description="PPO for Nuclear Fusion Control")
@@ -32,8 +32,8 @@ def get_args():
 
     # parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/test", 
     #                    help="Specify output directory path, use default path if not specified")
-    parser.add_argument("--output-dir", type=str, default=None, 
-                        help="Specify output directory path, use default path if not specified")
+    # parser.add_argument("--output-dir", type=str, default=None, 
+    #                     help="Specify output directory path, use default path if not specified")
     # PPO hyperparameters
     parser.add_argument("--learning-rate", type=float, default=3e-3) 
     parser.add_argument("--n-steps", type=int, default=2048)
@@ -41,7 +41,7 @@ def get_args():
     parser.add_argument("--n-epochs", type=int, default=20 )
     parser.add_argument("--gamma", type=float, default=0.952)#0.952
     parser.add_argument("--gae-lambda", type=float, default=0.98)#0.98
-    parser.add_argument("--clip-range", type=float, default=0.148)
+    parser.add_argument("--clip-range", type=float, default=0.148)#0.148
     parser.add_argument("--ent-coef", type=float, default=0.0067)
     parser.add_argument("--vf-coef", type=float, default=1)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
@@ -71,7 +71,13 @@ def get_args():
     
 
 
-def train(args=get_args()):
+def train(args=None):
+    if args is None:
+        args = get_args()
+    
+    # Convert attribute names with hyphens to underscores for consistency
+    # This handles the case where args come from command line (with hyphens)
+    args = normalize_args(args)
 
     args.device = torch.device(f"cuda:{args.cuda_id}" if torch.cuda.is_available() else "cpu")
     print(f"Use device: {args.device}")
@@ -121,28 +127,11 @@ def train(args=get_args()):
     adjusted_n_steps = min(args.n_steps, args.total_timesteps // 4)  # Ensure at least 4 rollouts
     adjusted_n_steps = max(adjusted_n_steps, 256)  
 
+    record_params = [
+        "clip_range"
+    ]
 
-    if args.output_dir is not None:
-        base_dir = args.output_dir
-        param_signature = (f"lr{args.learning_rate}_"
-                  f"steps{args.n_steps}_"
-                  f"batch{args.batch_size}_"
-                  f"epochs{args.n_epochs}_"
-                  f"gamma{args.gamma}_"
-                  f"gaelambda{args.gae_lambda}_"
-                  f"clip{args.clip_range}_"
-                  f"ent{args.ent_coef}_"
-                  f"vf{args.vf_coef}_"
-                  f"maxgrad{args.max_grad_norm}_"
-                  f"timesteps{args.total_timesteps}_"
-                  #f"hidden{'x'.join(map(str, args.hidden_dims))}")
-                  f"pol{'x'.join(map(str, args.pol_hidden_dims))}_"
-                  f"val{'x'.join(map(str, args.val_hidden_dims))}")
-        output_dir = os.path.join(base_dir, f"{args.task}_{args.algo_name}_seed{args.seed}",param_signature)
-        os.makedirs(output_dir, exist_ok=True)
-        
-    else:
-        output_dir = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
+    output_dir = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params)
     
     tb_log_dir = os.path.join(output_dir, "tensorboard")
     os.makedirs(tb_log_dir, exist_ok=True)
@@ -257,7 +246,7 @@ def train(args=get_args()):
         )
         callbacks.append(checkpoint_callback)
 
-    # 权重转换和保存回调
+
     convert_save_callback = ConvertAndSaveCallback(
         save_path=os.path.join(output_dir, "checkpoint"),
         save_freq=args.save_freq,

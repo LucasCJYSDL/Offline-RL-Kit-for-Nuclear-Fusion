@@ -21,7 +21,7 @@ BACKUP = 60
 
 DEFAULT_X_NAME = "timestep"
 # ROOT_DIR = "log"
-ROOT_DIR = "/home/scratch/jiayuc2/fy/log"
+ROOT_DIR = "/home/scratch/jiayuc2/fy/log_new"
 
 
 class KVWriter(object):

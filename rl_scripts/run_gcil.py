@@ -14,8 +14,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import Actor, ActorProb, TanhDiagGaussian
 from offlinerlkit.buffer import ReplayBuffer
-#from offlinerlkit.utils.logger import Logger, make_log_dirs
-from offlinerlkit.utils.logger import Logger, make_log_dirs_new
+from offlinerlkit.utils.logger import Logger, make_log_dirs
+#from offlinerlkit.utils.logger import Logger, make_log_dirs_new
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import BCPolicy
 
@@ -106,7 +106,8 @@ def train(args=get_args()):
     env.seed(args.seed)
 
     # log
-    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+    record_params = ["batch_size"]
+    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params)
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",

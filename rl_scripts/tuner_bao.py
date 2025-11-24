@@ -14,6 +14,43 @@ from optuna.trial import TrialState
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
+def get_tuning_args():
+    """Get command line arguments for hyperparameter tuning"""
+    parser = argparse.ArgumentParser(description="Generic Optuna-based hyperparameter tuner for offline RL")
+    
+    # Algorithm and configuration
+    parser.add_argument("--algo", type=str,required=True,
+                       help="Algorithm to tune (must exist in config file)")
+    parser.add_argument("--config", type=str, default="rl_scripts/algo_config_bao.json",
+                       help="Path to algorithm configuration JSON file")
+    
+    # Environment settings
+    parser.add_argument("--env", type=str, default="profile_control",
+                       help="Environment name")
+    parser.add_argument("--task", type=str, default="rotation",
+                       help="Task name")
+    parser.add_argument("--cuda-id", type=int, default=7,
+                       help="Default CUDA device ID (used if --gpu-ids not specified)")
+    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[0,1,2,3,4,5,6,7],
+                       help="List of GPU IDs to use for parallel trials (e.g., --gpu-ids 0 1 2 3)")
+    parser.add_argument("--seed", type=int, default=1,
+                       help="Base random seed")
+    
+    # Optuna settings
+    parser.add_argument("--n-trials", type=int, default=20,
+                       help="Number of optimization trials")
+    parser.add_argument("--study-name", type=str, default=None,
+                       help="Optuna study name (default: {algo}_optimization)")
+    parser.add_argument("--storage", type=str, default="sqlite:////home/scratch/jiayuc2/bao/optuna_study_bao.db",
+                       help="Optuna storage URL for distributed optimization")
+    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_results_bao",
+                       help="Directory to save optimization results")
+    parser.add_argument("--n-jobs", type=int, default=8,
+                       help="Number of parallel jobs (one per GPU recommended)")
+    
+    return parser.parse_args()
+
+
 class GenericHyperparameterTuner:
     """Generic hyperparameter tuner for offline RL algorithms"""
     
@@ -187,7 +224,7 @@ class GenericHyperparameterTuner:
             args = self.create_args_for_trial(trial)
             
             # Print trial info with GPU assignment
-            param_str = ", ".join([f"{k}={v:.1f}" if isinstance(v, float) else f"{k}={v}" 
+            param_str = ", ".join([f"{k}={v:.3f}" if isinstance(v, float) else f"{k}={v}" 
                                   for k, v in trial.params.items()])
             print(f"Trial {trial.number} (GPU {args.cuda_id}): {param_str}")
             
@@ -216,6 +253,13 @@ class GenericHyperparameterTuner:
                 reward = self._find_latest_logs(self.output_dir, args.task)
             
             print(f"Trial {trial.number} completed with reward: {reward:.4f}")
+            import shutil
+            if os.path.exists(log_base_dir):
+                try:
+                    shutil.rmtree(log_base_dir)
+                    print(f"Cleaned up logs: {log_base_dir}")
+                except Exception as e:
+                    print(f"Warning: Failed to clean up logs: {e}")
             return reward
             
         except RuntimeError as e:
@@ -255,41 +299,7 @@ class GenericHyperparameterTuner:
         return -1000.0
 
 
-def get_tuning_args():
-    """Get command line arguments for hyperparameter tuning"""
-    parser = argparse.ArgumentParser(description="Generic Optuna-based hyperparameter tuner for offline RL")
-    
-    # Algorithm and configuration
-    parser.add_argument("--algo", type=str,default="combo",
-                       help="Algorithm to tune (must exist in config file)")
-    parser.add_argument("--config", type=str, default="algo_config.json",
-                       help="Path to algorithm configuration JSON file")
-    
-    # Environment settings
-    parser.add_argument("--env", type=str, default="profile_control",
-                       help="Environment name")
-    parser.add_argument("--task", type=str, default="rotation",
-                       help="Task name")
-    parser.add_argument("--cuda-id", type=int, default=7,
-                       help="Default CUDA device ID (used if --gpu-ids not specified)")
-    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[0, 1, 2, 3, 4, 5],
-                       help="List of GPU IDs to use for parallel trials (e.g., --gpu-ids 0 1 2 3)")
-    parser.add_argument("--seed", type=int, default=1,
-                       help="Base random seed")
-    
-    # Optuna settings
-    parser.add_argument("--n-trials", type=int, default=25,
-                       help="Number of optimization trials")
-    parser.add_argument("--study-name", type=str, default=None,
-                       help="Optuna study name (default: {algo}_optimization)")
-    parser.add_argument("--storage", type=str, default="sqlite:////home/scratch/jiayuc2/fy/optuna_study.db",
-                       help="Optuna storage URL for distributed optimization")
-    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/fy",
-                       help="Directory to save optimization results")
-    parser.add_argument("--n-jobs", type=int, default=6,
-                       help="Number of parallel jobs (one per GPU recommended)")
-    
-    return parser.parse_args()
+
 
 
 def create_base_training_args(algo_name: str, config: Dict, tuning_args) -> argparse.Namespace:
@@ -485,27 +495,30 @@ def main():
         print(f"Error: {e}")
         sys.exit(1)
     
-    sampler = optuna.samplers.GridSampler(
-        _get_search_space_for_grid_sampler(tuner.config["tunable_params"])
-    )
+    # sampler = optuna.samplers.GridSampler(
+    #     _get_search_space_for_grid_sampler(tuner.config["tunable_params"])
+    # )
     
-    total_combinations = 1
-    for param_name, param_config in tuner.config["tunable_params"].items():
-        param_type = param_config.get("type", "float")
-        if param_type == "categorical":
-            total_combinations *= len(param_config["choices"])
-        elif param_type == "float":
-            n_values = param_config.get("n_values", 5)
-            total_combinations *= n_values
-        elif param_type == "int":
-            total_combinations *= (param_config["high"] - param_config["low"] + 1)
+    # total_combinations = 1
+    # for param_name, param_config in tuner.config["tunable_params"].items():
+    #     param_type = param_config.get("type", "float")
+    #     if param_type == "categorical":
+    #         total_combinations *= len(param_config["choices"])
+    #     elif param_type == "float":
+    #         n_values = param_config.get("n_values", 5)
+    #         total_combinations *= n_values
+    #     elif param_type == "int":
+    #         total_combinations *= (param_config["high"] - param_config["low"] + 1)
     
-    print(f"Total parameter combinations: {total_combinations}")
+    # print(f"Total parameter combinations: {total_combinations}")
     
-    if tuning_args.n_trials > total_combinations:
-        print(f"Warning: n_trials ({tuning_args.n_trials}) > total combinations ({total_combinations})")
-        print(f"Adjusting n_trials to {total_combinations}")
-        tuning_args.n_trials = total_combinations
+    # if tuning_args.n_trials > total_combinations:
+    #     print(f"Warning: n_trials ({tuning_args.n_trials}) > total combinations ({total_combinations})")
+    #     print(f"Adjusting n_trials to {total_combinations}")
+    #     tuning_args.n_trials = total_combinations
+
+    #TPES
+    sampler = optuna.samplers.TPESampler(seed=tuning_args.seed)
     
     if tuning_args.storage:
         study = optuna.create_study(
