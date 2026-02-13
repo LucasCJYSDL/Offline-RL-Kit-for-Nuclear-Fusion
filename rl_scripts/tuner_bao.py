@@ -22,22 +22,22 @@ def get_tuning_args():
     parser.add_argument("--algo", type=str,required=True,
                        help="Algorithm to tune (must exist in config file)")
     parser.add_argument("--config", type=str, default="rl_scripts/algo_config_bao.json",
-                       help="Path to algorithm configuration JSON file")
-    
+                      help="Path to algorithm configuration JSON file")
+
     # Environment settings
-    parser.add_argument("--env", type=str, default="profile_control",
+    parser.add_argument("--env", type=str, default="profile_control_new",
                        help="Environment name")
-    parser.add_argument("--task", type=str, default="rotation",
+    parser.add_argument("--task", type=str, default="pres_EFIT01",
                        help="Task name")
     parser.add_argument("--cuda-id", type=int, default=7,
                        help="Default CUDA device ID (used if --gpu-ids not specified)")
-    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[0,1,2,3,4,5,6,7],
+    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[3,4,5],
                        help="List of GPU IDs to use for parallel trials (e.g., --gpu-ids 0 1 2 3)")
     parser.add_argument("--seed", type=int, default=1,
                        help="Base random seed")
     
     # Optuna settings
-    parser.add_argument("--n-trials", type=int, default=20,
+    parser.add_argument("--n-trials", type=int, default=50,
                        help="Number of optimization trials")
     parser.add_argument("--study-name", type=str, default=None,
                        help="Optuna study name (default: {algo}_optimization)")
@@ -45,7 +45,7 @@ def get_tuning_args():
                        help="Optuna storage URL for distributed optimization")
     parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_results_bao",
                        help="Directory to save optimization results")
-    parser.add_argument("--n-jobs", type=int, default=8,
+    parser.add_argument("--n-jobs", type=int, default=3,
                        help="Number of parallel jobs (one per GPU recommended)")
     
     return parser.parse_args()
@@ -229,35 +229,47 @@ class GenericHyperparameterTuner:
             print(f"Trial {trial.number} (GPU {args.cuda_id}): {param_str}")
             
             # Train the model - pass args directly (not from command line)
-            self.train_fn(args)
+            # self.train_fn(args)
             
+            # # Extract reward from logs
+            # param_parts = []
+            # for key in sorted(trial.params.keys()):
+            #     value = trial.params[key]
+            #     if isinstance(value, float):
+            #         param_parts.append(f"{key}={value}")
+            #     else:
+            #         param_parts.append(f"{key}={value}")
+            
+            # param_str = "&".join(param_parts)
+            # log_base_dir = os.path.join(
+            #     self.output_dir,
+            #     f"log/{args.task}/{self.algo_name}&{param_str}"
+            # )
+            
+            # print(f"Looking for logs in: {log_base_dir}")
+            # if os.path.exists(log_base_dir):
+            #     reward = self.extract_reward_from_logs(log_base_dir)
+            # else:
+            #     reward = self._find_latest_logs(self.output_dir, args.task)
+            log_dirs = self.train_fn(args)  
+
             # Extract reward from logs
-            param_parts = []
-            for key in sorted(trial.params.keys()):
-                value = trial.params[key]
-                if isinstance(value, float):
-                    param_parts.append(f"{key}={value}")
-                else:
-                    param_parts.append(f"{key}={value}")
-            
-            param_str = "&".join(param_parts)
-            log_base_dir = os.path.join(
-                self.output_dir,
-                f"log/{args.task}/{self.algo_name}&{param_str}"
-            )
-            
-            print(f"Looking for logs in: {log_base_dir}")
-            if os.path.exists(log_base_dir):
-                reward = self.extract_reward_from_logs(log_base_dir)
+            print(f"Looking for logs in: {log_dirs}")
+            if log_dirs and os.path.exists(log_dirs):           
+                            reward = self.extract_reward_from_logs(log_dirs)
             else:
-                reward = self._find_latest_logs(self.output_dir, args.task)
-            
+                print(f"Warning: Log directory not found: {log_dirs}")
+                reward = -1000.0
             print(f"Trial {trial.number} completed with reward: {reward:.4f}")
             import shutil
-            if os.path.exists(log_base_dir):
+            # if os.path.exists(log_base_dir):
+            #     try:
+            #         shutil.rmtree(log_base_dir)
+            #         print(f"Cleaned up logs: {log_base_dir}")
+            if log_dirs and os.path.exists(log_dirs):
                 try:
-                    shutil.rmtree(log_base_dir)
-                    print(f"Cleaned up logs: {log_base_dir}")
+                    shutil.rmtree(log_dirs)
+                    print(f"Cleaned up logs: {log_dirs}")
                 except Exception as e:
                     print(f"Warning: Failed to clean up logs: {e}")
             return reward
@@ -284,13 +296,13 @@ class GenericHyperparameterTuner:
             return -1000.0
 
     def _find_latest_logs(self, base_dir: str, task: str) -> float:
-        """递归查找最新的日志文件"""
+        
         import glob
         pattern = os.path.join(base_dir, f"**/{task}/{self.algo_name}*/policy_training*progress.csv")
         csv_files = glob.glob(pattern, recursive=True)
         
         if csv_files:
-            # 按修改时间排序，获取最新的
+            
             latest_csv = max(csv_files, key=os.path.getmtime)
             print(f"Found latest log at: {latest_csv}")
             return self.extract_reward_from_logs(os.path.dirname(latest_csv))
@@ -313,6 +325,8 @@ def create_base_training_args(algo_name: str, config: Dict, tuning_args) -> argp
     args.seed = tuning_args.seed
     args.algo_name = algo_name
     
+
+    args.base_dir = os.path.join(tuning_args.output_dir, "log")
     # Load default parameters from config
     if "default_params" in config:
         for param_name, param_value in config["default_params"].items():
@@ -326,9 +340,12 @@ def save_optimization_results(study, output_dir: str, algo_name: str, tuning_arg
     os.makedirs(output_dir, exist_ok=True)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    task_name = tuning_args.task
     
     # Save best parameters
-    best_params_file = os.path.join(output_dir, f"{algo_name}_best_params_{timestamp}.json")
+    #best_params_file = os.path.join(output_dir, f"{algo_name}_best_params_{timestamp}.json")
+    best_params_file = os.path.join(output_dir, f"{algo_name}_{task_name}_best_params_{timestamp}.json")
     best_params = {
         "algorithm": algo_name,
         "best_value": float(study.best_trial.value) if study.best_trial else None,
@@ -345,7 +362,8 @@ def save_optimization_results(study, output_dir: str, algo_name: str, tuning_arg
         json.dump(best_params, f, indent=2)
     
     # Save detailed results
-    results_file = os.path.join(output_dir, f"{algo_name}_detailed_results_{timestamp}.json")
+    #results_file = os.path.join(output_dir, f"{algo_name}_detailed_results_{timestamp}.json")
+    results_file = os.path.join(output_dir, f"{algo_name}_{task_name}_detailed_results_{timestamp}.json")
     detailed_results = []
     
     for trial in study.trials:
@@ -364,7 +382,8 @@ def save_optimization_results(study, output_dir: str, algo_name: str, tuning_arg
         json.dump(detailed_results, f, indent=2)
     
     # Save summary
-    summary_file = os.path.join(output_dir, f"{algo_name}_optimization_summary_{timestamp}.txt")
+    #summary_file = os.path.join(output_dir, f"{algo_name}_optimization_summary_{timestamp}.txt")
+    summary_file = os.path.join(output_dir, f"{algo_name}_{task_name}_optimization_summary_{timestamp}.txt")
     with open(summary_file, 'w') as f:
         f.write(f"{algo_name.upper()} Hyperparameter Optimization Results\n")
         f.write("=" * 70 + "\n\n")
@@ -464,7 +483,8 @@ def main():
     
     # Set study name if not provided
     if tuning_args.study_name is None:
-        tuning_args.study_name = f"{tuning_args.algo}_optimization"
+        tuning_args.study_name = f"{tuning_args.algo}_{tuning_args.task}_optimization"
+
     
     # Determine GPU IDs to use
     if tuning_args.gpu_ids:
@@ -518,7 +538,33 @@ def main():
     #     tuning_args.n_trials = total_combinations
 
     #TPES
-    sampler = optuna.samplers.TPESampler(seed=tuning_args.seed)
+    #sampler = optuna.samplers.TPESampler(seed=tuning_args.seed)
+
+        
+    use_grid = tuner.config.get("use_grid_sampler", False)
+    if use_grid:
+        print("Using GridSampler for exhaustive search")
+        sampler = optuna.samplers.GridSampler(
+            _get_search_space_for_grid_sampler(tuner.config["tunable_params"])
+        )
+    
+        total_combinations = 1
+        for param_name, param_config in tuner.config["tunable_params"].items():
+            param_type = param_config.get("type", "float")
+            if param_type == "categorical":
+                total_combinations *= len(param_config["choices"])
+            elif param_type == "float":
+                n_values = param_config.get("n_values", 5)
+                total_combinations *= n_values
+            elif param_type == "int":
+                total_combinations *= (param_config["high"] - param_config["low"] + 1)
+        print(f"Total parameter combinations: {total_combinations}")
+        if tuning_args.n_trials > total_combinations:
+            print(f"Adjusting n_trials from {tuning_args.n_trials} to {total_combinations}")
+            tuning_args.n_trials = total_combinations
+    else:
+        print("Using TPESampler")
+        sampler = optuna.samplers.TPESampler(seed=tuning_args.seed)
     
     if tuning_args.storage:
         study = optuna.create_study(

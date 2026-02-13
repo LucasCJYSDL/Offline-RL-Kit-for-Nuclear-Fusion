@@ -14,7 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import Actor, ActorProb, TanhDiagGaussian
 from offlinerlkit.buffer import ReplayBuffer
-from offlinerlkit.utils.logger import Logger, make_log_dirs
+from offlinerlkit.utils.logger import Logger, make_log_dirs,make_log_dirs_new
 #from offlinerlkit.utils.logger import Logger, make_log_dirs_new
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import BCPolicy
@@ -30,14 +30,16 @@ def get_args():
     parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--stochastic_actor", type=bool, default=True)
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # cannot be base
     parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=4)
+    parser.add_argument("--cuda_id", type=int, default=5)
+
+    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
 
     return parser.parse_args()
 
@@ -107,7 +109,9 @@ def train(args=get_args()):
 
     # log
     record_params = ["batch_size"]
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params)
+    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
+                                 record_params=record_params,
+                                 base_dir=args.base_dir)
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",
@@ -118,6 +122,9 @@ def train(args=get_args()):
     # logger.log_hyperparameters(vars(args))
 
     GCIL(args, offline_data, env, logger)
+
+    #add
+    return log_dirs
 
 
 if __name__ == "__main__":

@@ -48,7 +48,7 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
 
-    parser.add_argument("--cql-weight", type=float, default=5)
+    parser.add_argument("--cql-weight", type=float, default=5.0)#5
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=True)
@@ -61,7 +61,7 @@ def get_args():
 
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
-    parser.add_argument("--rollout-length", type=int, default=5)
+    parser.add_argument("--rollout-length", type=int, default=1)#5
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.5)
 
@@ -76,10 +76,10 @@ def get_args():
     parser.add_argument("--reward_improvement_threshold", type=float, default=100, help="Minimum reward improvement threshold")
 
     # Environment settings
-    parser.add_argument("--env", type=str, default="profile_control")
-    parser.add_argument("--task", type=str, default="rotation")
+    parser.add_argument("--env", type=str, default="profile_control_new")
+    parser.add_argument("--task", type=str, default="pres_EFIT01")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=7)
+    parser.add_argument("--cuda_id", type=int, default=4)
 
     return parser.parse_args()
 
@@ -237,9 +237,6 @@ def train(args=None):
         real_ratio=args.real_ratio,
         eval_episodes=args.eval_episodes,
         lr_scheduler=lr_scheduler,
-        # Early stopping parameters
-        early_stop_wait_epochs=args.early_stop_wait_epochs if hasattr(args, 'early_stop') and args.early_stop else None,
-        reward_improvement_threshold=args.reward_improvement_threshold if hasattr(args, 'early_stop') and args.early_stop else None,
     )
     
     policy_trainer.train()

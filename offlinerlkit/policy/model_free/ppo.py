@@ -103,8 +103,7 @@ class FusionPPOEnv(gym.Env):
             batch_idxs=np.array([self.current_global_idx]),
             fixed_model_idx=self.current_model_idx
         )
-        if self.episode_length % 10 == 0:
-            print(f"[Step {self.episode_length}] Using model {self.current_model_idx}, actual used: {info['model_idxs'][0]}")
+
 
         # Get the complete next state from info
         self.current_full_state = info["next_full_observations"][0]

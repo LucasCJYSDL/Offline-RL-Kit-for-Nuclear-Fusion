@@ -26,7 +26,6 @@ from envs.utils.arg_utils import normalize_args
 def get_args():
     parser = argparse.ArgumentParser(description="PPO for Nuclear Fusion Control")
     
-    # 
     parser.add_argument("--algo-name", type=str, default="ppo")
     
 
@@ -35,9 +34,9 @@ def get_args():
     # parser.add_argument("--output-dir", type=str, default=None, 
     #                     help="Specify output directory path, use default path if not specified")
     # PPO hyperparameters
-    parser.add_argument("--learning-rate", type=float, default=3e-3) 
+    parser.add_argument("--learning-rate", type=float, default=3.0e-3) 
     parser.add_argument("--n-steps", type=int, default=2048)
-    parser.add_argument("--batch-size", type=int, default=1024)
+    parser.add_argument("--batch-size", type=int, default=2048)
     parser.add_argument("--n-epochs", type=int, default=20 )
     parser.add_argument("--gamma", type=float, default=0.952)#0.952
     parser.add_argument("--gae-lambda", type=float, default=0.98)#0.98
@@ -46,9 +45,9 @@ def get_args():
     parser.add_argument("--vf-coef", type=float, default=1)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
  #   parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
-    parser.add_argument("--pol-hidden-dims", type=int, nargs='*', default=[256, 256],
+    parser.add_argument("--pol-hidden-dims", type=int, nargs='*', default=[500, 500],
                        help="Policy network hidden layer dimensions")
-    parser.add_argument("--val-hidden-dims", type=int, nargs='*', default=[256, 256],
+    parser.add_argument("--val-hidden-dims", type=int, nargs='*', default=[500, 500],
                        help="Value network hidden layer dimensions")
     
     # training parameters
@@ -63,10 +62,10 @@ def get_args():
     parser.add_argument("--min_start_idx", type=int, default=4)
     parser.add_argument("--max_start_idx",  type=int, default=20)
     #!!! what you need to specify
-    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
+    parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
+    parser.add_argument("--task", type=str, default="q_EFIT01") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=3)
+    parser.add_argument("--cuda_id", type=int, default=6)
     return parser.parse_args()
     
 
@@ -99,10 +98,10 @@ def train(args=None):
     args.state_dim = len(offline_data['state_idxs'])
     args.control_dim = len(offline_data['action_idxs'])
     
-    print(f"observation dimension: {args.obs_shape}")
-    print(f"state dimension: {args.state_dim}")
-    print(f"action dimension: {args.action_dim}")
-    print(f"control dimension: {args.control_dim}")
+    # print(f"observation dimension: {args.obs_shape}")
+    # print(f"state dimension: {args.state_dim}")
+    # print(f"action dimension: {args.action_dim}")
+    # print(f"control dimension: {args.control_dim}")
     
     # create dynamics
     dynamics_model = EnsembleDynamicsModel(
@@ -128,7 +127,13 @@ def train(args=None):
     adjusted_n_steps = max(adjusted_n_steps, 256)  
 
     record_params = [
-        "clip_range"
+        "clip_range",
+        "total_timesteps",
+        "learning_rate",
+        "gae_lambda",
+        "gamma",
+        "batch_size",
+        "n_steps"
     ]
 
     output_dir = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params)
@@ -197,6 +202,7 @@ def train(args=None):
     
     fusion_callback = FusionSpecificCallback(
         eval_env=eval_env,
+        logger=logger,
         verbose=1,
         eval_freq=args.eval_freq,
         n_eval_episodes=5

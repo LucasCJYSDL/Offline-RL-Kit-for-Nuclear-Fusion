@@ -29,8 +29,8 @@ def get_args():
     parser.add_argument("--lr-decay", type=bool, default=True)
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--tau", type=float, default=0.005)
-    parser.add_argument("--expectile", type=float, default=0.7)
-    parser.add_argument("--temperature", type=float, default=3.0)
+    parser.add_argument("--expectile", type=float, default=0.508981)
+    parser.add_argument("--temperature", type=float, default=1.262980)
     parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
@@ -38,9 +38,11 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation")
+    parser.add_argument("--task", type=str, default="dens")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=1)
+    parser.add_argument("--cuda_id", type=int, default=4)
+
+    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
    
     return parser.parse_args()
 
@@ -161,11 +163,13 @@ def train(args=get_args()):
     buffer.load_dataset(offline_data) ## bug fix
 
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args),record_params=["expectile", "temperature"])
+    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
+                                 record_params=["expectile", "temperature"],
+                                 base_dir=args.base_dir)
     #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_100_untuned")
     # key: output file name, value: output handler type
     output_config = {
-        "consoleout_backup": "stdout",
+        #"consoleout_backup": "stdout",
         "policy_training_progress": "csv",
         "tb": "tensorboard"
     }
@@ -187,6 +191,9 @@ def train(args=get_args()):
 
     # train
     policy_trainer.train()
+    
+    #Return log_dirs for hyperparameter tuning
+    return log_dirs
 
 
 if __name__ == "__main__":

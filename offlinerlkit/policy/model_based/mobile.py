@@ -186,7 +186,20 @@ class MOBILEPolicy(BasePolicy):
         subfix = next_obss[:, pred_next_obss.shape[1]:]
         targets = subfix[:, :subfix.shape[1]//2]
         targets = targets.unsqueeze(1).unsqueeze(1).repeat(num_samples, num_ensembles, 1, 1).reshape(-1, targets.shape[-1])
-        differences = targets - pred_next_obss[:, self.sa_processor.idx_list]
+        # differences = targets - pred_next_obss[:, self.sa_processor.idx_list]
+
+        pred_part = pred_next_obss[:, self.sa_processor.idx_list]
+
+        pred_dim = pred_part.shape[1]
+        target_dim = targets.shape[1]
+
+        if target_dim > pred_dim:
+            assert target_dim % pred_dim == 0, (
+                f"Target dim {target_dim} must be a multiple of pred dim {pred_dim}"
+            )
+            repeat_factor = target_dim // pred_dim
+            pred_part = pred_part.repeat(1, repeat_factor)
+        differences = targets - pred_part
         pred_next_obss = torch.cat([pred_next_obss, targets, differences], dim=-1)
 
         pred_next_actions, _ = self.actforward(pred_next_obss)

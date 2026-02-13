@@ -56,12 +56,12 @@ def get_args():
     parser.add_argument("--adv-train-steps", type=int, default=500)
     parser.add_argument("--sl-batch-size", type=int, default=8)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
-    parser.add_argument("--rollout-length", type=int, default=5)
-    parser.add_argument("--adv-weight", type=float, default=3e-4) #??
+    parser.add_argument("--rollout-length", type=int, default=2)#5
+    parser.add_argument("--adv-weight", type=float, default=6.471144404147533e-05) #??#3e-4#
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.5)
 
-    parser.add_argument("--epoch", type=int, default=1000)
+    parser.add_argument("--epoch", type=int, default=500)#1000
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -77,7 +77,9 @@ def get_args():
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--update_hidden_states", type=bool, default=False) # whether to update the hidden states in the offline dataset, since the dynamics model is being updated with the rl policy
-    parser.add_argument("--cuda_id", type=int, default=6)
+    parser.add_argument("--cuda_id", type=int, default=7)
+
+    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
 
     return parser.parse_args()
 
@@ -210,7 +212,10 @@ def train(args=get_args()):
 
     # log
     #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
-    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
+                                 record_params=["rollout_length", "adv_weight"],
+                                 base_dir=args.base_dir)
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",
@@ -256,6 +261,9 @@ def train(args=get_args()):
     #     )
 
     policy_trainer.train()
+    
+    #Return log_dirs for hyperparameter tuning
+    return log_dirs
 
 
 if __name__ == "__main__":

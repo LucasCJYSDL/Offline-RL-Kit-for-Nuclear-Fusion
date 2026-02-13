@@ -1,13 +1,9 @@
-"""
-A template for a fusion env.
-"""
-
+import torch
 import random
 import numpy as np
-import torch
 import pickle
-
-from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
+from envs.base_env import NFBaseEnv
+from rl_preparation.process_raw_data import raw_data_dir
 from rl_preparation.state_actuator_spaces import ( 
     reward_function,
     computed_obs_in_use,
@@ -22,7 +18,6 @@ from rl_preparation.state_actuator_spaces import (
     target_highs,
     horizon
 )
-from rl_preparation.process_raw_data import raw_data_dir
 
 class SA_processor: # used for both training and evaluation
     def __init__(self, offline_data, tracking_data, device):
@@ -34,12 +29,20 @@ class SA_processor: # used for both training and evaluation
         self.np_range = ((bounds[1] - bounds[0]) / 2.0)[np.newaxis, :]
         self.np_mid = ((bounds[1] + bounds[0]) / 2.0)[np.newaxis, :]
 
+        self.k_step_targets_in_obs = k_step_targets_in_obs
+        self.discrete_k_target_idx_in_obs = discrete_k_target_idx_in_obs
+        if computed_obs_in_use is None:
+            self.computed_observations = []
+        else:
+            self.computed_observations = computed_obs_in_use
+            print(f'Using {len(self.computed_observations)} computed observations.')
+
         with open(raw_data_dir + '/info.pkl', 'rb') as file:
           self.info = pickle.load(file)
 
         # store the tracking taregts for both the training and evaluation data
         training_data_size = offline_data['tracking_ref'].shape[0] #151
-        self.training_tracking_targets = np.array([offline_data['tracking_ref'][-1] for _ in range(training_data_size+1)])
+        self.training_tracking_targets = np.array([offline_data['tracking_ref'][-1] for _ in range(training_data_size + self.k_step_targets_in_obs)])
         self.training_tracking_targets[:training_data_size] = offline_data['tracking_ref']
 
         self.eval_tracking_targets = {}
@@ -47,7 +50,7 @@ class SA_processor: # used for both training and evaluation
         self.eval_traj_actions = {}
         for key in tracking_data: # to avoid indexing issue, we use a padding trick here
             tracking_data_size = tracking_data[key]['tracking_ref'].shape[0]
-            self.eval_tracking_targets[key] = np.array([tracking_data[key]['tracking_ref'][-1] for _ in range(tracking_data_size+1)])
+            self.eval_tracking_targets[key] = np.array([tracking_data[key]['tracking_ref'][-1] for _ in range(tracking_data_size+self.k_step_targets_in_obs)])
             self.eval_tracking_targets[key][:tracking_data_size] = tracking_data[key]['tracking_ref']
             # self.eval_data_sizes[key] = tracking_data[key]['tracking_ref'].shape[0]
             self.eval_traj_states[key] = tracking_data[key]["tracking_states"]
@@ -66,12 +69,6 @@ class SA_processor: # used for both training and evaluation
         self.tracking_target_names = offline_data['tracking_target_names']
         self.action_names = offline_data['action_names']
 
-        if computed_obs_in_use is None:
-            self.computed_observations = []
-        else:
-            self.computed_observations = computed_obs_in_use
-            print(f'Using {len(self.computed_observations)} computed observations.')
-
     def build_rl_state_from_next_state(
         self,
         next_state,      # (B, state_dim_selected)
@@ -82,9 +79,10 @@ class SA_processor: # used for both training and evaluation
             next_state,
             batch_idx,
             shot_id=shot_id
-        )    
+        )
+        
     
-    def get_rl_state(self, state, batch_idx, shot_id=None):
+    def get_rl_state(self, state, batch_idx, shot_id=None, target=None):
         """
         Design of the state space (used for the rl policy).
         """
@@ -94,24 +92,42 @@ class SA_processor: # used for both training and evaluation
             batch_idx = np.array([batch_idx for _ in range(state.shape[0])])
         else:
             batch_idx = np.array(batch_idx)
-
-        if shot_id is None: # training data
-            # batch_idx[batch_idx >= self.training_data_size] = self.training_data_size - 1
-            #batch_idx = np.clip(batch_idx, 0, len(self.training_tracking_targets) - 1)
-            targets = self.training_tracking_targets[batch_idx]
+        
+        if target is not None:
+            targets_source = target
         else:
-            # batch_idx[batch_idx >= self.eval_data_sizes[shot_id]] = self.eval_data_sizes[shot_id] - 1
-            #boundary checkout
-            targets = self.eval_tracking_targets[shot_id][batch_idx]
+            if shot_id is None:
+                targets_source = self.training_tracking_targets
+            else:
+                targets_source = self.eval_tracking_targets[shot_id]
+        
+
+        if self.discrete_k_target_idx_in_obs is not None:
+
+            idx_to_use = np.array([batch_idx + k for k in self.discrete_k_target_idx_in_obs])
+            targets = targets_source[idx_to_use[:], :]
+                
+        else:
+            idx_to_use = np.array([batch_idx + k for k in range(self.k_step_targets_in_obs)])
+            targets = targets_source[idx_to_use[:], :]
+                
+
 
         if not is_np:
             targets = torch.FloatTensor(targets).to(state.device)
         difference = targets - state[:, self.idx_list]
 
+        targets_list = [targets[i] for i in range(targets.shape[0])]
+        difference_list = [difference[i] for i in range(difference.shape[0])]
+
         if is_np:
-            rl_state = np.concatenate([state, targets, difference], axis=-1) # the rl state contains the current state, tracking targets, and distance to the tracking targets
+            rl_state = np.hstack([state] + targets_list + difference_list) # the rl state contains the current state, tracking targets, and distance to the tracking targets
         else:
-            rl_state = torch.cat([state, targets, difference], dim=-1)
+            rl_state = torch.cat(
+                [state] + targets_list + difference_list,
+                dim=-1
+            )
+        
 
         return rl_state
     
@@ -186,52 +202,40 @@ class SA_processor: # used for both training and evaluation
         return self.tracking_target_names, self.action_names
 
 
-class NFBaseEnv: # env for evaluation
+class ProfileControlEnv(NFBaseEnv): # env for evaluation
     def __init__(self, model_dir, sa_processor, general_data, tracking_data, ref_shot_id, device):
-        state_idxs, action_idxs = general_data['state_idxs'], general_data['action_idxs']
-        tracking_states, tracking_pre_actions, tracking_actions = tracking_data['tracking_states'], tracking_data['tracking_pre_actions'], \
-                                                                  tracking_data['tracking_actions']
-        # load the variables
-        self.cur_time = None
-        self.ref_shot_id = ref_shot_id
-        self.time_limit = tracking_states.shape[0] # this should be the horizon of the reference shot
+        super().__init__(model_dir, sa_processor, general_data, tracking_data[ref_shot_id], ref_shot_id, device)
+        # these variables are from the base env but we don't need them
+        self.ref_shot_id = None
+        self.tracking_states, self.tracking_pre_actions, self.tracking_actions = None, None, None
+        self.eval_shot_list = list(tracking_data.keys())
+        self.tracking_data = tracking_data
+          
+        with open(raw_data_dir + '/info.pkl', 'rb') as file:
+          self.info = pickle.load(file)
 
-        self.cur_shot_time_limit = 150
-        self.tracking_states = np.array(tracking_states)
-        self.tracking_pre_actions = np.array(tracking_pre_actions)
-        self.tracking_actions = np.array(tracking_actions)
-
-        self.device = device
-        self.sa_processor = sa_processor
-
-        self.state_idxs = state_idxs
-        self.action_idxs = action_idxs
-
-        # load the well-trained rnn model ensemble, which is the backbone of this fusion env.
-        ensemble = load_ensemble_from_parent_dir(parent_dir=model_dir) # TODO: an ensemble of dynamics models
-        self.all_models = ensemble.members
-        for memb in self.all_models:
-            memb.to(device)
-            memb.eval()
-    
     def get_eval_shot_list(self):
         """
         return the list of shots for evaluation
         """
-        return [self.ref_shot_id]
-
-    def seed(self, seed):
-        """
-        Seed the randomness.
-        """
-        random.seed(seed)
-        torch.manual_seed(seed)
+        return self.eval_shot_list
 
     def reset(self, shot_id=None):
-        """
-        Reset at the beginning of an episode.
-        """
-        self.cur_time = random.randint(0, 9)
+        # randomly sample a shot for evaluation
+        if shot_id is None:
+            self.ref_shot_id = random.choice(self.eval_shot_list)
+        else:
+            self.ref_shot_id = shot_id
+
+        self.tracking_states, self.tracking_pre_actions, self.tracking_actions = self.tracking_data[self.ref_shot_id]['tracking_states'], \
+                                                                                 self.tracking_data[self.ref_shot_id]['tracking_pre_actions'], \
+                                                                                 self.tracking_data[self.ref_shot_id]['tracking_actions']
+        #self.cur_shot_time_limit = self.tracking_states.shape[0]
+        self.cur_shot_time_limit = 150
+        
+        # randomly sample an initial time step
+        # self.cur_time = random.randint(0, 9) # TODO
+        self.cur_time = 0
         self.cur_state = torch.FloatTensor(self.tracking_states[self.cur_time]).unsqueeze(0).to(self.device)
         self.pre_action = torch.FloatTensor(self.tracking_pre_actions[self.cur_time]).unsqueeze(0).to(self.device)
 
@@ -240,50 +244,55 @@ class NFBaseEnv: # env for evaluation
             memb.reset()
         
         return_state = self.cur_state[:, self.state_idxs]
-        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id = self.ref_shot_id)
+        
+        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id)
 
     def step(self, cur_action):
-        """
-        Proceed to the next time step in the episode.
-        """
         # prepare the input for the dymamics model
         cur_action = torch.Tensor(cur_action).to(self.device)
+        batch_size = cur_action.shape[0] # step with a batch of actions  #？？？
         cur_action = self.sa_processor.get_step_action(cur_action)
-        cur_action_pad = torch.FloatTensor(self.tracking_actions[self.cur_time]).unsqueeze(0).to(self.device)
+        cur_action_pad = torch.FloatTensor(self.tracking_actions[self.cur_time]).unsqueeze(0).repeat(batch_size, 1).to(self.device)
         cur_action_pad[:, self.action_idxs] = cur_action
         cur_action = cur_action_pad
 
+        if self.cur_state.shape[0] < batch_size:
+            self.cur_state = self.cur_state.repeat(batch_size, 1)
+            self.pre_action = self.pre_action.repeat(batch_size, 1)
         net_input = torch.cat([self.cur_state, self.pre_action, cur_action-self.pre_action], dim=-1)
 
         # get the ensemble output
         ensemble_preds = 0.
+        means, stds = [], []
         with torch.no_grad():
             for memb in self.all_models:
                 net_input_n = memb.normalizer.normalize(net_input, 0)
-                net_output_n, _ = memb.single_sample_output_from_torch(net_input_n) # torch.Size([1, 27])
+                net_output_n, info = memb.single_sample_output_from_torch(net_input_n) # torch.Size([1, 27])
                 net_output = memb.normalizer.unnormalize(net_output_n, 1)
                 ensemble_preds += net_output
+                # collect the means and stds of predictions
+                mean = memb.normalizer.unnormalize(info["mean_predictions"], 1)
+                std = getattr(memb.normalizer, f'{1}_scaling') * info["std_predictions"] # danger
+                means.append(mean)
+                stds.append(std)
+
         ensemble_preds = ensemble_preds / float(len(self.all_models)) # delta of the state, which is the mean of the ensemble outputs
+        means, stds = torch.stack(means).cpu().numpy(), torch.stack(stds).cpu().numpy()
 
         # proceed to the next time step
         self.cur_state = self.cur_state + ensemble_preds # the next state, TODO: use the true value for the unselected dimensions
         return_state = self.cur_state[:, self.state_idxs]
-        reward = self.get_reward(return_state.cpu().numpy(), self.cur_time, shot_id=self.ref_shot_id)[0] # next state and current time step
+        reward = self.get_reward(return_state.cpu().numpy(), self.cur_time, shot_id=self.ref_shot_id) # next state and current time step
         self.cur_time += 1
         self.pre_action = cur_action.clone()
-        
-        # add time limit
+
+        # new to this env
         done = self.is_done(self.cur_time)
         done = done | (self.cur_time >= self.cur_shot_time_limit)
 
-        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, done, {"time_step": self.cur_time}
+        if batch_size > 1:
+            done = np.array([done for _ in range(batch_size)])
+        else:
+            reward = reward[0]
 
-        #return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, self.is_done(self.cur_time), {"time_step": self.cur_time}
-
-    def get_reward(self, next_state, time_step, shot_id):
-        return self.sa_processor.get_reward_new(next_state, time_step, shot_id)
-        
-    def is_done(self, time_step):
-        # terminates when exceeding the time limit of the shot
-        #return time_step >= self.time_limit
-        return time_step >= self.cur_shot_time_limit
+        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, done, {'means': means, 'stds': stds, "time_step": self.cur_time}

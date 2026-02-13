@@ -29,8 +29,8 @@ def get_args():
     parser.add_argument("--auto-alpha", default=True)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
 
-    parser.add_argument("--cql-weight", type=float, default=0.1)
-    parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--cql-weight", type=float, default=1.0)
+    parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=True)
     parser.add_argument("--with-lagrange", type=bool, default=False)
@@ -44,10 +44,10 @@ def get_args():
     parser.add_argument("--batch-size", type=int, default=256)
 
     #!!! what you need to specify
-    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation") #?
+    parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
+    parser.add_argument("--task", type=str, default="temp") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=1)
+    parser.add_argument("--cuda_id", type=int, default=6)
 
     return parser.parse_args()
 

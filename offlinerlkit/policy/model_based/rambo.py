@@ -98,7 +98,7 @@ class RAMBOPolicy(MOPOPolicy):
                 bc_loss.backward()
                 self._bc_optim.step()
                 sum_loss += bc_loss.cpu().item()
-            print(f"Epoch {i_epoch}, mean bc loss {sum_loss/i_batch}")
+            #print(f"Epoch {i_epoch}, mean bc loss {sum_loss/i_batch}")
         torch.save(self.state_dict(), os.path.join(logger.model_dir, "rambo_pretrain.pth"))
 
     def update_dynamics(
@@ -132,6 +132,9 @@ class RAMBOPolicy(MOPOPolicy):
             else:
                 self.dynamics.reset()
 
+            num_ensemble = self.dynamics.model.num_ensemble
+            fixed_model_idxs = np.random.randint(0, num_ensemble, size=self._adv_rollout_batch_size)
+
             observations = full_observations[:, self.state_idxs]
             observations = self.sa_processor.get_rl_state(observations, init_samples["batch_idx_list"][0])
             tot_loss = 0.
@@ -142,10 +145,15 @@ class RAMBOPolicy(MOPOPolicy):
 
                 sl_input, sl_output, sl_mask = itemgetter("net_input", "net_output", "mask")(self.model_sl_buffer.sample(self._sl_batch_size))
 
-                next_observations, terminals, loss_info, info, t_loss = self.dynamics_step_and_forward(observations, actions, full_observations, full_actions, 
-                                                                                                       pre_actions, time_steps, time_terminals, sl_input, 
+                # next_observations, terminals, loss_info, info, t_loss = self.dynamics_step_and_forward(observations, actions, full_observations, full_actions, 
+                #                                                                                        pre_actions, time_steps, time_terminals, sl_input, 
+                #                                                                                        sl_output, sl_mask, init_samples["batch_idx_list"][t],
+                #                                                                                        init_samples["batch_idx_list"][t+1])
+                next_observations, terminals, loss_info, info, t_loss = self.dynamics_step_and_forward(observations, actions, full_observations, full_actions,
+                                                                                                       pre_actions, time_steps, time_terminals, sl_input,
                                                                                                        sl_output, sl_mask, init_samples["batch_idx_list"][t],
-                                                                                                       init_samples["batch_idx_list"][t+1])
+                                                                                                       init_samples["batch_idx_list"][t+1],
+                                                                                                       fixed_model_idxs=fixed_model_idxs)
                 tot_loss += t_loss
                 
                 for _key in loss_info:
@@ -193,7 +201,8 @@ class RAMBOPolicy(MOPOPolicy):
         sl_output, 
         sl_mask,
         batch_idxs,
-        next_batch_idxs
+        next_batch_idxs,
+        fixed_model_idxs=None
     ):
         net_input = np.concatenate([full_observations, pre_actions, full_actions-pre_actions], axis=-1)
         mean, std = self.dynamics.model.forward(torch.tensor(net_input, device=self.device), is_tensor=True, with_grad=True)
@@ -206,7 +215,12 @@ class RAMBOPolicy(MOPOPolicy):
 
         # select the next observations
         info = {}
-        selected_indexes = self.dynamics.model.random_member_idxs(batch_size)
+        #selected_indexes = self.dynamics.model.random_member_idxs(batch_size)
+        if fixed_model_idxs is not None:
+            selected_indexes = fixed_model_idxs
+        else:
+            selected_indexes = self.dynamics.model.random_member_idxs(batch_size)
+            
         sample = ensemble_sample[selected_indexes, np.arange(batch_size)]
         full_next_observations = sample
         info["next_full_observations"] = sample.cpu().numpy()

@@ -44,8 +44,8 @@
       "early_stop_wait_epochs": 30,
       "reward_improvement_threshold": 100
     },
-    "tuning_epoch": 100,
-    "tuning_step_per_epoch": 500,
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1024,
     "tuning_eval_episodes": 3,
     "enable_early_stop": false,
     "early_stop_wait_epochs": 10,
@@ -86,8 +86,8 @@
       "eval_episodes": 5,
       "batch_size": 256
     },
-    "tuning_epoch": 100,
-    "tuning_step_per_epoch": 500,
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1024,
     "tuning_eval_episodes": 3,
     "enable_early_stop": false,
     "reward_column": "eval/episode_reward",
@@ -128,8 +128,8 @@
       "eval_episodes": 5,
       "batch_size": 256
     },
-    "tuning_epoch": 100,
-    "tuning_step_per_epoch": 500,
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1024,
     "tuning_eval_episodes": 3,
     "enable_early_stop": false,
     "reward_column": "eval/episode_reward",
@@ -143,7 +143,7 @@
       },
       "eta": {
         "type": "categorical",
-        "choices": [0.1, 0.3, 0.5, 0.7, 1.0]
+        "choices": [0.1, 0.3, 0.5, 0.7, 1.0, 2.0, 3.0, 4.0, 5.0]
       }
     },
     "train_module": "run_edac",
@@ -171,8 +171,8 @@
       "early_stop_patience": 50,
       "early_stop_threshold": 200
     },
-    "tuning_epoch": 100,
-    "tuning_step_per_epoch": 500,
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1024,
     "tuning_eval_episodes": 3,
     "enable_early_stop": false,
     "reward_column": "eval/episode_reward",
@@ -181,8 +181,9 @@
   "td3bc": {
     "tunable_params": {
       "alpha": {
-        "type": "categorical",
-        "choices": [0.1, 0.5, 1.0, 2.5, 5.0, 10.0]
+        "type": "float",
+        "low": 0.1,
+        "high": 10.0
       }
     },
     "train_module": "run_td3bc",
@@ -203,8 +204,8 @@
       "batch_size": 256,
       "cuda_id": 1
     },
-    "tuning_epoch": 100,
-    "tuning_step_per_epoch": 500,
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1024,
     "tuning_eval_episodes": 3,
     "enable_early_stop": false,
     "reward_column": "eval/episode_reward",
@@ -250,8 +251,8 @@
       "lr_scheduler": true,
       "cuda_id": 7
     },
-    "tuning_epoch": 100,
-    "tuning_step_per_epoch": 500,
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1024,
     "tuning_eval_episodes": 3,
     "enable_early_stop": false,
     "reward_column": "eval/episode_reward",
@@ -263,7 +264,7 @@
     "tunable_params": {
       "clip_range": {
         "type": "categorical",
-        "choices": [0.1, 0.148, 0.17, 0.2, 0.25, 0.3]
+        "choices": [0.148, 0.15, 0.155, 0.16, 0.3]
       }
     },
     "default_params": {

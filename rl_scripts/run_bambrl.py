@@ -40,13 +40,13 @@ def get_args():
 
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
-    parser.add_argument("--rollout-length", type=int, default=3)
-    parser.add_argument("--penalty-coef", type=float, default=1.5)
+    parser.add_argument("--rollout-length", type=int, default=2)#3
+    parser.add_argument("--penalty-coef", type=float, default=0.7067621971505375)#1.5
     parser.add_argument("--num-samples", type=int, default=10)
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.05)
 
-    parser.add_argument("--epoch", type=int, default=1000)
+    parser.add_argument("--epoch", type=int, default=500)#1000
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -65,7 +65,7 @@ def get_args():
     parser.add_argument("--use-sl", type=bool, default=False) # required by ba-mcts-sl
     parser.add_argument("--sl-policy-only", type=bool, default=True) # only use sl to train the policy (recommended)
     parser.add_argument("--model-retain-epochs-sl", type=int, default=5)
-    parser.add_argument("--use-ba", type=bool, default=True)
+    parser.add_argument("--use-ba", type=bool, default=False)#True
     parser.add_argument("--sample-step", type=bool, default=False)
     parser.add_argument("--test_search", type=bool, default=True)
 
@@ -75,6 +75,8 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--search_with_hidden_state", type=bool, default=False) # when you do MCTS, whether to use the hidden state of the rpnn dynamics model; time-costly if true
     parser.add_argument("--cuda_id", type=int, default=4)
+
+    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
 
     return parser.parse_args()
 
@@ -188,7 +190,11 @@ def train(args=get_args()):
 
     # log
     #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length", "real_ratio"])
-        log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length", "real_ratio"], base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length", "real_ratio"], base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+    record_params = ["rollout_length", "penalty_coef", "use_ba", "search_alpha"]
+    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
+                                 record_params=record_params,
+                                 base_dir=args.base_dir)
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",
@@ -277,6 +283,9 @@ def train(args=get_args()):
 
     # train policy   
     policy_trainer.train()
+    
+    #Return log_dirs for hyperparameter tuning
+    return log_dirs
 
 
 if __name__ == "__main__":

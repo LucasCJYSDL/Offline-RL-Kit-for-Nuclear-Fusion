@@ -28,8 +28,8 @@ def get_args():
     parser.add_argument("--auto-alpha", default=True)
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=3e-4)
-    parser.add_argument("--lmbda", type=float, default=0.9)
-    parser.add_argument("--num-sampled-actions", type=int, default=10)
+    parser.add_argument("--lmbda", type=float, default=0.809154)
+    parser.add_argument("--num-sampled-actions", type=int, default=20)
     parser.add_argument("--behavior-policy-lr", type=float, default=1e-3)
     parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
@@ -41,6 +41,8 @@ def get_args():
     parser.add_argument("--task", type=str, default="rotation")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=4)
+
+    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
     return parser.parse_args()
 
 
@@ -132,7 +134,9 @@ def train(args=get_args()):
 
     # log
     record_params = ["lmbda", "num_sampled_actions"]
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args),record_params)
+    log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
+                                 record_params=record_params,
+                                 base_dir=args.base_dir)
     #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_100_untuned")
     # key: output file name, value: output handler type
     output_config = {
@@ -157,6 +161,9 @@ def train(args=get_args()):
 
     # train
     policy_trainer.train()
+
+    #Return log_dirs for hyperparameter tuning
+    return log_dirs
 
 
 if __name__ == "__main__":

@@ -240,6 +240,8 @@ class ROMBRLPolicy(MOBILEPolicy):
         else:
             self.dynamics.reset()
 
+        num_ensemble = self.dynamics.model.num_ensemble
+        fixed_model_idxs = np.random.randint(0, num_ensemble, size=self.onpolicy_rollout_batch_size)
         # rollout
         observations = full_observations[:, self.state_idxs]
         observations = self.sa_processor.get_rl_state(observations, init_samples["batch_idx_list"][0])
@@ -287,6 +289,8 @@ class ROMBRLPolicy(MOBILEPolicy):
                 new_next_observations = full_observations[terminals][:, self.state_idxs]
                 new_next_observations = self.sa_processor.get_rl_state(new_next_observations, new_samples["batch_idx_list"][0])
                 next_observations[terminals] = new_next_observations
+
+                fixed_model_idxs[terminals] = np.random.randint(0, num_ensemble, size=num_terminals)
 
                 if t < self.onpolicy_rollout_length - 1:
                     time_steps[terminals] = new_samples["time_steps"][:, 0]

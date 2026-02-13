@@ -154,7 +154,7 @@ class GenericHyperparameterTuner:
             # Try to find reward column using config
             reward_column = self.config.get("reward_column", None)
             
-            if reward_column and reward_column in df.columns:
+            if reward_column in df.columns:
                 best_reward = df[reward_column].tail(n_epochs).mean()
                 return float(best_reward) if not np.isnan(best_reward) else -1000.0
             
@@ -206,7 +206,7 @@ class GenericHyperparameterTuner:
             param_str = "&".join(param_parts)
             log_base_dir = os.path.join(
                 self.output_dir,
-                f"log/{args.task}/{self.algo_name}&{param_str}"
+                f"log_new_state_tune/{args.task}/{self.algo_name}&{param_str}" #need specify
             )
             
             print(f"Looking for logs in: {log_base_dir}")
@@ -240,13 +240,11 @@ class GenericHyperparameterTuner:
             return -1000.0
 
     def _find_latest_logs(self, base_dir: str, task: str) -> float:
-        """递归查找最新的日志文件"""
         import glob
         pattern = os.path.join(base_dir, f"**/{task}/{self.algo_name}*/policy_training*progress.csv")
         csv_files = glob.glob(pattern, recursive=True)
         
         if csv_files:
-            # 按修改时间排序，获取最新的
             latest_csv = max(csv_files, key=os.path.getmtime)
             print(f"Found latest log at: {latest_csv}")
             return self.extract_reward_from_logs(os.path.dirname(latest_csv))
@@ -262,17 +260,17 @@ def get_tuning_args():
     # Algorithm and configuration
     parser.add_argument("--algo", type=str,default="combo",
                        help="Algorithm to tune (must exist in config file)")
-    parser.add_argument("--config", type=str, default="algo_config.json",
+    parser.add_argument("--config", type=str, default="/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit-for-Nuclear-Fusion/rl_scripts/algo_config.json",
                        help="Path to algorithm configuration JSON file")
     
     # Environment settings
-    parser.add_argument("--env", type=str, default="profile_control",
+    parser.add_argument("--env", type=str, default="profile_control_new",
                        help="Environment name")
-    parser.add_argument("--task", type=str, default="rotation",
+    parser.add_argument("--task", type=str, default="temp",
                        help="Task name")
     parser.add_argument("--cuda-id", type=int, default=7,
                        help="Default CUDA device ID (used if --gpu-ids not specified)")
-    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[0, 1, 2, 3, 4, 5],
+    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[0, 1, 4, 6],
                        help="List of GPU IDs to use for parallel trials (e.g., --gpu-ids 0 1 2 3)")
     parser.add_argument("--seed", type=int, default=1,
                        help="Base random seed")
@@ -282,11 +280,11 @@ def get_tuning_args():
                        help="Number of optimization trials")
     parser.add_argument("--study-name", type=str, default=None,
                        help="Optuna study name (default: {algo}_optimization)")
-    parser.add_argument("--storage", type=str, default="sqlite:////home/scratch/jiayuc2/fy/optuna_study.db",
+    parser.add_argument("--storage", type=str, default="sqlite:////home/scratch/jiayuc2/fy/optuna_study_temp.db",
                        help="Optuna storage URL for distributed optimization")
     parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/fy",
                        help="Directory to save optimization results")
-    parser.add_argument("--n-jobs", type=int, default=6,
+    parser.add_argument("--n-jobs", type=int, default=4,
                        help="Number of parallel jobs (one per GPU recommended)")
     
     return parser.parse_args()
@@ -485,27 +483,52 @@ def main():
         print(f"Error: {e}")
         sys.exit(1)
     
-    sampler = optuna.samplers.GridSampler(
-        _get_search_space_for_grid_sampler(tuner.config["tunable_params"])
-    )
+    # sampler = optuna.samplers.GridSampler(
+    #     _get_search_space_for_grid_sampler(tuner.config["tunable_params"])
+    # )
     
-    total_combinations = 1
-    for param_name, param_config in tuner.config["tunable_params"].items():
-        param_type = param_config.get("type", "float")
-        if param_type == "categorical":
-            total_combinations *= len(param_config["choices"])
-        elif param_type == "float":
-            n_values = param_config.get("n_values", 5)
-            total_combinations *= n_values
-        elif param_type == "int":
-            total_combinations *= (param_config["high"] - param_config["low"] + 1)
+    # total_combinations = 1
+    # for param_name, param_config in tuner.config["tunable_params"].items():
+    #     param_type = param_config.get("type", "float")
+    #     if param_type == "categorical":
+    #         total_combinations *= len(param_config["choices"])
+    #     elif param_type == "float":
+    #         n_values = param_config.get("n_values", 5)
+    #         total_combinations *= n_values
+    #     elif param_type == "int":
+    #         total_combinations *= (param_config["high"] - param_config["low"] + 1)
     
-    print(f"Total parameter combinations: {total_combinations}")
+    # print(f"Total parameter combinations: {total_combinations}")
     
-    if tuning_args.n_trials > total_combinations:
-        print(f"Warning: n_trials ({tuning_args.n_trials}) > total combinations ({total_combinations})")
-        print(f"Adjusting n_trials to {total_combinations}")
-        tuning_args.n_trials = total_combinations
+    # if tuning_args.n_trials > total_combinations:
+    #     print(f"Warning: n_trials ({tuning_args.n_trials}) > total combinations ({total_combinations})")
+    #     print(f"Adjusting n_trials to {total_combinations}")
+    #     tuning_args.n_trials = total_combinations
+
+    use_grid = tuner.config.get("use_grid_sampler", False)
+    if use_grid:
+        print("Using GridSampler for exhaustive search")
+        sampler = optuna.samplers.GridSampler(
+            _get_search_space_for_grid_sampler(tuner.config["tunable_params"])
+        )
+    
+        total_combinations = 1
+        for param_name, param_config in tuner.config["tunable_params"].items():
+            param_type = param_config.get("type", "float")
+            if param_type == "categorical":
+                total_combinations *= len(param_config["choices"])
+            elif param_type == "float":
+                n_values = param_config.get("n_values", 5)
+                total_combinations *= n_values
+            elif param_type == "int":
+                total_combinations *= (param_config["high"] - param_config["low"] + 1)
+        print(f"Total parameter combinations: {total_combinations}")
+        if tuning_args.n_trials > total_combinations:
+            print(f"Adjusting n_trials from {tuning_args.n_trials} to {total_combinations}")
+            tuning_args.n_trials = total_combinations
+    else:
+        print("Using TPESampler")
+        sampler = optuna.samplers.TPESampler(seed=tuning_args.seed)
     
     if tuning_args.storage:
         study = optuna.create_study(

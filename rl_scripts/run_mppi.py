@@ -51,6 +51,8 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=3) # -1 represents using cpus
 
+    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+
     return parser.parse_args()
 
 
@@ -76,9 +78,10 @@ def train(args=get_args()):
 
     # log
     #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["horizon", "num_samples", "lam", "penalty_coef"])
+    record_params = ["horizon"]
     log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
-                                 record_params=["horizon", "num_samples", "lam", "penalty_coef"],
-                                 base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+                                 record_params=record_params,
+                                 base_dir=args.base_dir)
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",
@@ -110,6 +113,9 @@ def train(args=get_args()):
 
     # distill the policy through goal-conditioned IL
     GCIL(args, planning_dataset, env, logger)
+
+    #Return log_dirs for hyperparameter tuning
+    return log_dirs
 
 
 if __name__ == "__main__":

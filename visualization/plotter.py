@@ -81,6 +81,9 @@ def plot_tracking_quantities_with_units(time_array, target_quan_array, real_quan
         "dstdenp":[ 'Density (10^19)'],
         'gasA':[ 'Gas A (Voltage)'],
         'dens': ['Density'],
+        'temp': ['Temperature'],
+        'pres_EFIT01': ['Pressure'],
+        "q_EFIT01": ['q'],
     }
     n = len([quan_names])
     rows = (n + 1) // 2  # Calculate rows needed for 2 subplots per row
@@ -97,8 +100,8 @@ def plot_tracking_quantities_with_units(time_array, target_quan_array, real_quan
         quan_name = quan_names[i]
         if quan_name == 'q_EFIT01':
             axes[i].plot(1/real_quan_array[tidx], ls='--', color='black', label='True')
-            axes[i].plot(1/target_quan_array[0, tidx], ls='-', color='green', label='Target')
-            axes[i].plot(1/np.mean(cur_quan_array, axis=0)[tidx], color='red', label='RL')
+            axes[i].plot(1/target_quan_array[tidx], ls='-', color='green', label='Target')
+            axes[i].plot(1/cur_quan_array[tidx], color='red', label='RL')
             axes[i].plot(1/cur_quan_array[tidx, :].T, color='red', alpha=0.1)
             axes[i].set_ylim([0.75, 6])
             axes[i].set_title('q')

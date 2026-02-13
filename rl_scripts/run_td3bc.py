@@ -42,10 +42,10 @@ def get_args():
     parser.add_argument("--batch-size", type=int, default=256)
 
     #!!! what you need to specify
-    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation")
+    parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
+    parser.add_argument("--task", type=str, default="temp")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=1)
+    parser.add_argument("--cuda_id", type=int, default=4)
    
     return parser.parse_args()
 

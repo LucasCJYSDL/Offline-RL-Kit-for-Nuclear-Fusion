@@ -103,18 +103,12 @@ def load_offline_data(env, tracking_target, is_il):
                 tracking_data[int(shot_id)]['tracking_ref'] = fixed_ref_shot_targets(ref_shot_next, offline_data['index_list'], None)
             elif env == "profile_control": # TODO: use the first option (commented for now)
                 #change evaluation targets
-                if tracking_target in ['dens', 'rotation']:
-                    tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
-                else:
-                    tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets(target_lows, target_highs, tracking_data[int(shot_id)]['tracking_states'])                
-                # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(ref_shot, offline_data['index_list'], None, change_every)
-                # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
+                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
+            elif env == "profile_control_new": # TODO: use the first option (commented for now)
+                #change evaluation targets
+                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
             elif env == "fusion_env":
-                if tracking_target in ['dens', 'rotation']:
-                    tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
-                else:
-                    tracking_data[int(shot_id)]['tracking_ref'] = uniform_targets(target_lows, target_highs, horizon)
-                #tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
+                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
             else:
                 raise NotImplementedError
 
@@ -122,18 +116,13 @@ def load_offline_data(env, tracking_target, is_il):
     if env == "base": # TODO: decouple the target setting menthod with the env type
         offline_data['tracking_ref'] = fixed_ref_shot_targets(ref_shot_next, offline_data['index_list'], offline_data['terminals'])
     elif env == "profile_control":
-        # change tariningtargets
-        if tracking_target in ['dens', 'rotation']:
-            offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'],eval_mode=False)
-        else:
-            offline_data['tracking_ref'] = uniform_targets_new(target_lows, target_highs, offline_data['observations'])
+        offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'],eval_mode=False)
         # offline_data['tracking_ref'] = step_function_targets(offline_data['observations'], offline_data['index_list'], offline_data['terminals'], change_every)
         # TODO: usig 'next_observations'
+    elif env == "profile_control_new":
+        offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'],eval_mode=False)
     elif env == "fusion_env":
-        if tracking_target in ['dens', 'rotation']:
-            offline_data['tracking_ref'] = original_trajectory_targets(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'])
-        else:
-            offline_data['tracking_ref'] = uniform_targets(target_lows, target_highs, horizon)
+        offline_data['tracking_ref'] = original_trajectory_targets(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'])
     else:
         raise NotImplementedError
     
@@ -193,6 +182,12 @@ def get_rl_data_envs(env_id, task, device, is_il=False):
         sa_processor = SA_processor(offline_data, tracking_data, device)
         env = ProfileControlEnv(evaluation_model_dir, sa_processor, offline_data, tracking_data, reference_shot, device) # this is the env for evaluation
     
+    elif env_id == 'profile_control_new':
+        from envs.profile_control_new_state_env import ProfileControlEnv
+        from envs.profile_control_new_state_env import SA_processor
+        sa_processor = SA_processor(offline_data, tracking_data, device)
+        env = ProfileControlEnv(evaluation_model_dir, sa_processor, offline_data, tracking_data, reference_shot, device) # this is the env for evaluation
+
     elif env_id == 'fusion_env':
         from envs.fusion_env import FusionEnv, SA_processor
         sa_processor = SA_processor(offline_data, tracking_data, device)

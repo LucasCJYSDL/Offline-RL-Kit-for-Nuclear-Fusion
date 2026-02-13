@@ -29,7 +29,7 @@
       "eval_episodes": 5,
       "batch_size": 256
     },
-    "tuning_epoch": 150,
+    "tuning_epoch": 100,
     "tuning_step_per_epoch": 1000,
     "tuning_eval_episodes": 3,
     "eval_last_n_epochs": 10,
@@ -67,7 +67,7 @@
       "eval_episodes": 5,
       "batch_size": 256
     },
-    "tuning_epoch": 150,
+    "tuning_epoch": 100,
     "tuning_step_per_epoch": 1000,
     "tuning_eval_episodes": 3,
     "eval_last_n_epochs": 10,
@@ -91,6 +91,221 @@
       "epoch": 1000,
       "step_per_epoch": 1000,
       "eval_episodes": 5
+    },
+    "tuning_epoch": 150,
+    "tuning_step_per_epoch": 1000,
+    "tuning_eval_episodes": 3,
+    "eval_last_n_epochs": 10,
+    "enable_early_stop": false,
+    "reward_column": null
+  },
+    "bambrl": {
+    "tunable_params": {
+      "rollout_length": {
+        "type": "int",
+        "low": 1,
+        "high": 5
+      },
+      "penalty_coef": {
+        "type": "float",
+        "low": 0.5,
+        "high": 2.0
+      },
+      "use_ba": {
+        "type": "categorical",
+        "choices": [true, false]
+      },
+      "search_alpha": {
+        "type": "categorical",
+        "choices": [0.5, 0.8]
+      }
+    },
+    "train_module": "run_bambrl",
+    "record_params": ["rollout_length", "penalty_coef", "use_ba", "search_alpha"],
+    "default_params": {
+      "algo_name": "bambrl",
+      "actor_lr": 1e-4,
+      "critic_lr": 3e-4,
+      "hidden_dims": [256, 256],
+      "gamma": 0.99,
+      "tau": 0.005,
+      "alpha": 0.2,
+      "auto_alpha": true,
+      "target_entropy": null,
+      "alpha_lr": 1e-4,
+      "num_q_ensemble": 2,
+      "deterministic_backup": true,
+      "max_q_backup": false,
+      "norm_reward": false,
+      "rollout_freq": 1000,
+      "rollout_batch_size": 50000,
+      "num_samples": 10,
+      "model_retain_epochs": 5,
+      "real_ratio": 0.05,
+      "epoch": 1000,
+      "step_per_epoch": 1000,
+      "eval_episodes": 5,
+      "batch_size": 256,
+      "lr_scheduler": true,
+      "use_search": true,
+      "search_ratio": 0.1,
+      "search_ucb_coe": 1.0,
+      "search_root_alpha": 0.3,
+      "search_n_actions": 10,
+      "search_n_states": 5,
+      "search_n_search": 50,
+      "use_sl": false,
+      "sl_policy_only": true,
+      "model_retain_epochs_sl": 5,
+      "sample_step": false,
+      "test_search": true,
+      "search_with_hidden_state": false
+    },
+    "tuning_epoch": 75,
+    "tuning_step_per_epoch": 1000,
+    "tuning_eval_episodes": 3,
+    "eval_last_n_epochs": 10,
+    "enable_early_stop": false,
+    "reward_column": null
+  },
+  "rambo": {
+    "tunable_params": {
+      "rollout_length": {
+        "type": "int",
+        "low": 1,
+        "high": 5
+      },
+      "adv_weight": {
+        "type": "float",
+        "low": 0.0,
+        "high": 1e-3,
+        "log": false
+      }
+    },
+    "train_module": "run_rambo",
+    "record_params": ["rollout_length", "adv_weight"],
+    "default_params": {
+      "algo_name": "rambo",
+      "actor_lr": 1e-4,
+      "critic_lr": 3e-4,
+      "dynamics_adv_lr": 3e-4,
+      "hidden_dims": [256, 256],
+      "gamma": 0.99,
+      "tau": 0.005,
+      "alpha": 0.2,
+      "auto_alpha": true,
+      "target_entropy": null,
+      "alpha_lr": 1e-4,
+      "rollout_freq": 250,
+      "dynamics_update_freq": 1000,
+      "adv_batch_size": 256,
+      "adv_train_steps": 500,
+      "sl_batch_size": 8,
+      "rollout_batch_size": 50000,
+      "model_retain_epochs": 5,
+      "real_ratio": 0.5,
+      "epoch": 1000,
+      "step_per_epoch": 1000,
+      "eval_episodes": 5,
+      "batch_size": 256,
+      "include_ent_in_adv": false,
+      "load_bc_path": null,
+      "bc_lr": 1e-4,
+      "bc_epoch": 50,
+      "bc_batch_size": 256,
+      "update_hidden_states": false
+    },
+    "tuning_epoch":75,
+    "tuning_step_per_epoch": 1000,
+    "tuning_eval_episodes": 3,
+    "eval_last_n_epochs": 10,
+    "enable_early_stop": false,
+    "reward_column": null
+  },
+    "mppi": {
+    "tunable_params": {
+      "horizon": {
+        "type": "categorical",
+        "choices": [20, 30, 40, 50]
+      },
+      "lam": {
+        "type": "categorical",
+        "choices": [1.0, 2.0, 3.0, 4.0]
+      },
+      "num_samples": {
+        "type": "categorical",
+        "choices": [1000,2000]
+      }
+    },
+    "train_module": "run_mppi",
+    "record_params": [
+      "horizon",
+      "lam",
+      "num_samples"
+    ],
+    "default_params": {
+      "algo_name": "mppi",
+      "gamma": 1.0,
+      "penalty_coef": 2.5,
+      "episodes_per_shot": 10,
+      "num_envs": 1000,
+      "actor_lr": 3e-4,
+      "hidden_dims": [
+        256,
+        256,
+        256
+      ],
+      "epoch": 1000,
+      "step_per_epoch": 1000,
+      "eval_episodes": 5,
+      "batch_size": 256,
+      "stochastic_actor": true,
+      "load_data": false
+    },
+    "tuning_epoch": 100,
+    "tuning_step_per_epoch": 1000,
+    "tuning_eval_episodes": 3,
+    "eval_last_n_epochs": 10,
+    "enable_early_stop": false,
+    "reward_column": null,
+    "use_grid_sampler": true
+  },
+  "ppo": {
+    "tunable_params": {
+      "clip_range": {
+        "type": "float",
+        "low": 0.1,
+        "high": 0.3
+      },
+      "learning_rate": {
+        "type": "float",
+        "low": 1e-4,
+        "high": 1e-2,
+        "log": true
+      }
+    },
+    "train_module": "run_ppo",
+    "record_params": [
+      "clip_range",
+      "learning_rate"
+    ],
+    "default_params": {
+      "algo_name": "ppo",
+      "n_steps": 2048,
+      "batch_size": 2048,
+      "n_epochs": 20,
+      "gamma": 0.952,
+      "gae_lambda": 0.98,
+      "vf_coef": 1,
+      "ent_coef":0.0067,
+      "max_grad_norm": 0.5,
+      "pol_hidden_dims": [500, 500],
+      "val_hidden_dims": [500, 500],
+      "total_timesteps": 100000,
+      "eval_freq": 10000,
+      "eval_episodes": 6,
+      "save_freq": 10000,
+      "max_episode_length": 150
     },
     "tuning_epoch": 150,
     "tuning_step_per_epoch": 1000,

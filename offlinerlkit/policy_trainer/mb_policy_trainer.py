@@ -29,9 +29,7 @@ class MBPolicyTrainer:
         real_ratio: float = 0.05,
         eval_episodes: int = 10,
         lr_scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
-        dynamics_update_freq: int = 0,
-        early_stop_wait_epochs=None,                  # Patience epochs for reward improvement
-        reward_improvement_threshold=None,    # Minimum reward improvement threshold
+        dynamics_update_freq: int = 0
     ) -> None:
         self.policy = policy
         self.eval_env = eval_env
@@ -49,16 +47,6 @@ class MBPolicyTrainer:
         self._real_ratio = real_ratio
         self._eval_episodes = eval_episodes
         self.lr_scheduler = lr_scheduler
-
-        
-        self._early_stop_wait_epochs = early_stop_wait_epochs  
-        self._early_stop_delta= reward_improvement_threshold
-    
-        
-        self.best_reward = float('-inf')
-        self.best_reward_epoch = 0
-        self.epochs_without_reward_improvement = 0
-        self.reward_history = []
 
     def train(self) -> Dict[str, float]:
         start_time = time.time()
@@ -107,6 +95,22 @@ class MBPolicyTrainer:
                 self.lr_scheduler.step()
             
             # evaluate current policy
+            # if e > self._epoch - 10:
+            #     eval_info = self._evaluate()
+            #     ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
+            #     ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
+            #     last_10_performance.append(ep_reward_mean)
+            #     self.logger.logkv("eval/episode_reward", ep_reward_mean)
+            #     self.logger.logkv("eval/episode_reward_std", ep_reward_std)
+            #     self.logger.logkv("eval/episode_length", ep_length_mean)
+            #     self.logger.logkv("eval/episode_length_std", ep_length_std)
+            
+            
+            # self.logger.set_timestep(num_timesteps)
+            # self.logger.dumpkvs(exclude=["dynamics_training_progress"])
+
+
+
             eval_info = self._evaluate()
             ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
             ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
@@ -121,16 +125,9 @@ class MBPolicyTrainer:
             # save checkpoint
             torch.save(self.policy.state_dict(), os.path.join(self.logger.checkpoint_dir, "policy.pth"))
 
-            if (self._early_stop_wait_epochs is not None
-                and self._early_stop_delta is not None):
-                # Check if early stopping is needed
-                stop, reason = self._check_reward_early_stopping(e, ep_reward_mean)
-                if stop:
-                    print(f"Early stopping at epoch {e}: {reason}")
-                    break
-
         self.logger.log("total time: {:.2f}s".format(time.time() - start_time))
         torch.save(self.policy.state_dict(), os.path.join(self.logger.model_dir, "policy.pth"))
+        # self.policy.dynamics.save(self.logger.model_dir)
         self.logger.close()
     
         return {"last_10_performance": np.mean(last_10_performance)}
@@ -163,20 +160,3 @@ class MBPolicyTrainer:
             "eval/episode_reward": [ep_info["episode_reward"] for ep_info in eval_ep_info_buffer],
             "eval/episode_length": [ep_info["episode_length"] for ep_info in eval_ep_info_buffer]
         }
-
-    def _check_reward_early_stopping(self, epoch: int, eval_reward: float) -> Tuple[bool, str]:
-        """Reward-based early stopping check"""
-       
-        if eval_reward > self.best_reward + self._early_stop_delta:
-            self.best_reward = eval_reward
-            self.best_reward_epoch = epoch
-            self.epochs_without_reward_improvement = 0
-            print(f"New best reward: {eval_reward:.2f} at epoch {epoch}")
-        else:
-            self.epochs_without_reward_improvement += 1
-        
-        if self.epochs_without_reward_improvement >= self._early_stop_wait_epochs:
-            return True, f"No reward improvement for {self._early_stop_wait_epochs} epochs"
-        
-    
-        return False, ""

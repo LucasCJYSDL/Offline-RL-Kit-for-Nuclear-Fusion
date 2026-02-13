@@ -8,7 +8,8 @@ from offlinerlkit.modules import ActorProb, TanhDiagGaussian, DiagGaussian, Acto
 class Controller:
     def __init__(self, args):
         # register an actor
-        actor_backbone = MLP(input_dim=args.obs_dim, hidden_dims=args.hidden_dims)
+        #actor_backbone = MLP(input_dim=args.obs_dim, hidden_dims=args.hidden_dims)
+        actor_backbone = MLP(input_dim=args.obs_dim, hidden_dims=args.hidden_dims, dropout_rate=getattr(args, 'dropout_rate', None))
         if not args.stochastic_actor:
             self.actor = Actor(actor_backbone, args.action_dim, max_action=args.max_action, device=args.device)
         else:
