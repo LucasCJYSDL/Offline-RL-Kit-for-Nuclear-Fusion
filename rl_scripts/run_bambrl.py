@@ -149,7 +149,7 @@ def train(args=get_args()):
     )
 
     termination_fn = env.is_done
-    reward_fn = sa_processor.get_reward
+    reward_fn = sa_processor.get_reward_new
     dynamics = BayesEnsembleDynamics(
         args.sample_step,
         dynamics_model,

@@ -40,9 +40,10 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=4)
+    parser.add_argument("--cuda_id", type=int, default=1)
 
-    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+    # parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+    parser.add_argument("--base-dir", type=str, default="/zfsauton2/home/jiayuc2/bao/synthesize_test_all/log")
     return parser.parse_args()
 
 

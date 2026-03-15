@@ -127,7 +127,7 @@ def train(args=None):
     )
 
     termination_fn = env.is_done # danger
-    reward_fn = sa_processor.get_reward # danger
+    reward_fn = sa_processor.get_reward_new # danger
     dynamics = EnsembleDynamics(
         dynamics_model,
         termination_fn,

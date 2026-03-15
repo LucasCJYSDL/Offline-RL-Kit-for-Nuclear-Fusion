@@ -14,7 +14,7 @@ from pytorch_lightning.utilities.seed import seed_everything
 from dynamics_toolbox.utils.lightning.constructors import construct_all_pl_components_for_training
 
 
-@ray.remote(num_gpus=1/6)  # Request 1/6 of a GPU
+@ray.remote(num_gpus=1)  # Request 1/6 of a GPU
 def train_single_model(cfg: DictConfig, ensemble_id: int, exp_id: int, B_star: int, num_models_so_far: int):
     save_dir = os.path.join(os.getcwd(), "exp_{}".format(exp_id)) # DANGER: could take a lot of disk space.
     # Clone the config for this ensemble member

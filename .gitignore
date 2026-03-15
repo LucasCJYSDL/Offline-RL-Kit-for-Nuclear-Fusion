@@ -12,3 +12,4 @@ outputs/
 visualization/results
 visualization/saved_data
 noshape_gas_flattop_synthesized_rl100_il13/
+src/

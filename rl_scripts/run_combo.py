@@ -152,7 +152,7 @@ def train(args=None):
     )
 
     termination_fn = env.is_done
-    reward_fn = sa_processor.get_reward
+    reward_fn = sa_processor.get_reward_new
     dynamics = EnsembleDynamics(
         dynamics_model,
         termination_fn,

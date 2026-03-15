@@ -23,6 +23,19 @@ def _load_models(parent_dir, device):
     return models
 
 
+def _get_all_shots_from_raw_data(raw_data_dir):
+    tr_path = os.path.join(raw_data_dir, "tr.hdf5")
+    if not os.path.exists(tr_path):
+        raise FileNotFoundError(f"Cannot find raw file: {tr_path}")
+
+    with h5py.File(tr_path, "r") as hdf:
+        if "shotnum" not in hdf:
+            raise KeyError("'shotnum' not found in tr.hdf5")
+        shots = np.unique(hdf["shotnum"][:].astype(np.int64))
+
+    return sorted(shots.tolist())
+
+
 def synthesize_rollouts(
     offline_dst,
     raw_data_dir,
@@ -70,6 +83,10 @@ def synthesize_rollouts(
     il_shots_used = set()
     tracking_shots_used = set()
 
+    rl_shot_set = set(rl_shot_list)
+    il_shot_set = set(il_shot_list)
+    tracking_shot_set = set(tracking_shot_list)
+
     gen_models = _load_models(model_gen_dir, device)
     hidden_models = _load_models(model_hidden_dir, device)
 
@@ -88,7 +105,7 @@ def synthesize_rollouts(
         cur_state = torch.FloatTensor(offline_dst["observations"][t]).to(device)
         terminated = False
 
-        if cur_shot in tracking_shot_list:
+        if cur_shot in tracking_shot_set:
             tracking_data[cur_shot] = {
                 "tracking_states": [],
                 "tracking_next_states": [],
@@ -121,7 +138,7 @@ def synthesize_rollouts(
             dataset["terminals"].append(offline_dst["terminals"][t])
             dataset["shotnum"].append(cur_shot)
 
-            if cur_shot in rl_shot_list:
+            if cur_shot in rl_shot_set:
                 rl_shots_used.add(cur_shot)
                 rl_data["observations"].append(cur_state.cpu().numpy())
                 rl_data["pre_actions"].append(pre_action.cpu().numpy())
@@ -133,7 +150,7 @@ def synthesize_rollouts(
                 if offline_dst["time_step"][t] < 10:
                     rl_data["traj_start_indices"].append(current_idx)
 
-            if cur_shot in il_shot_list:
+            if cur_shot in il_shot_set:
                 il_shots_used.add(cur_shot)
                 il_data["observations"].append(cur_state.cpu().numpy())
                 il_data["pre_actions"].append(pre_action.cpu().numpy())
@@ -153,11 +170,12 @@ def synthesize_rollouts(
 
             if offline_dst["terminals"][t]:
                 terminated = True
-                if cur_shot in rl_shot_list:
+                if cur_shot in rl_shot_set:
                     s_id = len(rl_data["hidden_states"])
                     shot_states = np.array(rl_data["observations"][s_id:])
                     shot_pre_actions = np.array(rl_data["pre_actions"][s_id:])
                     shot_cur_actions = np.array(rl_data["actions"][s_id:])
+
                     hidden_input = torch.cat(
                         [
                             torch.FloatTensor(shot_states).to(device),
@@ -173,8 +191,10 @@ def synthesize_rollouts(
                         hidden_input_n = memb.normalizer.normalize(hidden_input, 0)
                         memb_out = memb.get_mem_out(hidden_input_n).unsqueeze(1)
                         memb_out_list.append(memb_out)
+
                     shot_hidden_states = torch.stack(memb_out_list, dim=1).cpu().tolist()
                     rl_data["hidden_states"].extend(shot_hidden_states)
+
                     if len(rl_data["hidden_states"]) != len(rl_data["observations"]):
                         raise ValueError(
                             "Hidden state count mismatch within shot: "
@@ -185,6 +205,7 @@ def synthesize_rollouts(
             t += 1
             if t >= total_steps or offline_dst["shotnum"][t] != cur_shot:
                 break
+
             if prev_terminal:
                 cur_state = torch.FloatTensor(offline_dst["observations"][t]).to(device)
             else:
@@ -204,6 +225,7 @@ def synthesize_rollouts(
     dataset["states_positions_upper_bounds"] = offline_dst["states_positions_upper_bounds"].copy()
     dataset["states_velocity_lower_bounds"] = offline_dst["states_velocity_lower_bounds"].copy()
     dataset["states_velocity_upper_bounds"] = offline_dst["states_velocity_upper_bounds"].copy()
+
     dataset["pre_actions"] = np.clip(
         dataset["pre_actions"], dataset["action_lower_bounds"], dataset["action_upper_bounds"]
     )
@@ -291,25 +313,39 @@ def synthesize_rollouts(
 
 
 if __name__ == "__main__":
+    # Raw dataset and models
     raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark"
     model_gen_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_step2"
     model_hidden_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_step2"
+
+    # Bounds
     action_bound_file = "noshape_gas_flattop.yaml"
     state_bound_file = "noshape_gas_flattop.yaml"
-    reference_shot = 161409
     warmup_steps = 5
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    rl_shot_list = list(range(reference_shot - 200, reference_shot + 200))
-    il_shot_list = list(range(reference_shot - 200, reference_shot + 200))
+    # Tracking list stays user-selectable
     tracking_shot_list = [161409, 161410, 161412]
 
-    synthesized_data_dir = raw_data_dir + "_synthesized1"
-    rl_data_path = synthesized_data_dir + "/rl_data.h5"
-    il_data_path = synthesized_data_dir + "/il_data.h5"
-    tracking_data_path = synthesized_data_dir + "/tracking_data.h5"
+    # Output directory for "all" version
+    synthesized_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
+    rl_data_path = os.path.join(synthesized_data_dir, "rl_data.h5")
+    il_data_path = os.path.join(synthesized_data_dir, "il_data.h5")
+    tracking_data_path = os.path.join(synthesized_data_dir, "tracking_data.h5")
 
-    all_shots = list(set(rl_shot_list) | set(il_shot_list) | set(tracking_shot_list))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Use ALL raw shots for RL/IL
+    all_shots = _get_all_shots_from_raw_data(raw_data_dir)
+    rl_shot_list = all_shots
+    il_shot_list = all_shots
+
+    # Optional safety filter for tracking shots
+    all_shot_set = set(all_shots)
+    tracking_shot_list = [s for s in tracking_shot_list if s in all_shot_set]
+
+    print(f"Total raw shots found: {len(all_shots)}")
+    print(f"RL shots: {len(rl_shot_list)} | IL shots: {len(il_shot_list)} | Tracking shots: {len(tracking_shot_list)}")
+
     offline_dst = get_raw_data(
         raw_data_dir,
         action_bound_file,

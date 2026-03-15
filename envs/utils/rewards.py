@@ -637,4 +637,110 @@ class ProfileTrackingReward(RewardFunction):
         return total_reward
 
 
+class ProfileTrackingWithBetanReward(RewardFunction):
+    def __init__(
+            self,
+            profile_name: str,
+            track_coefficients: Optional[Sequence[float]] = None,
+            square_costs: bool = False,
+            track_signals: Optional[Sequence[str]] = None,
+            unnormalize: bool = False,
+            betan_penalty_wt : float = 1.0,
+            rewards_on_component: bool = False,
+            integral_term: bool = False,
+            integral_term_wt: float = 1.0,
+    ):
+        """
+        Profile tracking reward with BetaN constraint.
+        """
+        self.profile_name = profile_name
+        self.track_coefficients = track_coefficients
+        self.square_costs = square_costs
+        self.profile_idxs = {}
+        self.normalizers = {}
+        self.track_idxs = None
+        self.track_signals = track_signals
+        self.unnormalize = unnormalize
+        self.betan_penalty_wt = betan_penalty_wt
+        self.integral_term = integral_term
+        self.rewards_on_component = rewards_on_component
+        self.integral_term_wt = integral_term_wt
 
+    def get_reward(
+            self,
+            nxts: np.ndarray,
+            actions: np.ndarray,
+            info: Dict[str, Any],
+            targets: Optional[np.ndarray] = None,
+            env_merge: bool = False,
+            env_type: int = None,
+            get_indv_rewards: bool = False,
+            **kwargs
+    ) -> np.ndarray:
+        total_reward = 0
+        if self.track_idxs is None:
+            self.track_idxs = []
+            for sig in self.track_signals:
+                self.track_idxs.append(info['state_space'].index(sig))
+        assert env_type in (0, 1) if env_merge else True, "env_type must be 0 (ZIPFIT) or 1 (CAKENN) when env_merge is True"
+        if not env_merge or (env_merge and env_type == 0):
+            if self.rewards_on_component:
+                for idx in self.track_idxs:
+                    if self.square_costs:
+                        costs = np.square(nxts[:, idx] - targets[:, idx])
+                    else:
+                        costs = np.abs(nxts[:, idx] - targets[:, idx])
+                    total_reward = total_reward + -1 * costs
+            else:
+                for pname in self.profile_name:
+                    profile = reconstruct_profile_from_state(profile_name=pname, states=nxts, info=info, unnormalize=self.unnormalize)
+                    target_profile = reconstruct_profile_from_state(profile_name=pname, states=targets, info=info, unnormalize=self.unnormalize)
+                    if self.track_coefficients is None:
+                        self.track_coefficients = np.array([1 for _ in range(profile.shape[1])])
+                    if self.square_costs:
+                        total_reward = total_reward + -1 * np.dot(np.square(profile - target_profile), self.track_coefficients).flatten()
+                    else:
+                        total_reward = total_reward + -1 * np.dot(np.abs(profile - target_profile), self.track_coefficients).flatten()
+            beta_idx = info['state_space'].index('betan_EFIT01')
+        else:  # env_type == 1 and CAKENN rewards
+            if self.rewards_on_component:
+                for idx in self.track_idxs:
+                    if self.square_costs:
+                        costs = np.square(nxts[:, idx] - targets[:, idx])
+                    else:
+                        costs = np.abs(nxts[:, idx] - targets[:, idx])
+                    total_reward = total_reward + -1 * costs
+            else:
+                for pname in self.profile_name:
+                    profile = reconstruct_obs_profile_from_obs(profile_name=pname, states=nxts, info=info, unnormalize=self.unnormalize, state_names=info['state_space'])
+                    target_profile = reconstruct_obs_profile_from_obs(profile_name=pname, states=targets, info=info, unnormalize=self.unnormalize, state_names=info['state_space'])
+                    if self.track_coefficients is None:
+                        self.track_coefficients = np.array([1 for _ in range(profile.shape[1])])
+                    if self.square_costs:
+                        total_reward = total_reward + -1 * np.dot(np.square(profile - target_profile), self.track_coefficients).flatten()
+                    else:
+                        total_reward = total_reward + -1 * np.dot(np.abs(profile - target_profile), self.track_coefficients).flatten()
+            beta_idx = info['state_space'].index('betan_EFITRT')
+        beta_error = np.square(targets[:, beta_idx] - nxts[:, beta_idx])
+        if self.integral_term:
+            additional_obs = kwargs.get('additional_obs', {})
+            current_cum_error = 0
+            for key in additional_obs.keys():
+                if 'component1_iterm' in key:
+                    if self.square_costs:
+                        current_cum_error += np.square(additional_obs[key][:,0])
+                    else:
+                        current_cum_error += np.abs(additional_obs[key][:,0])
+            
+        total = total_reward - self.betan_penalty_wt * beta_error - self.integral_term_wt*current_cum_error
+        
+        if not get_indv_rewards:
+            return total
+        
+        # Return dictionary with 'total' key for compatibility with fusion_env.py
+        return {
+            'total': total,
+            'profile_error': total_reward,
+            'beta_error': -self.betan_penalty_wt * beta_error,
+            'integral_error': -self.integral_term_wt*current_cum_error,
+        }

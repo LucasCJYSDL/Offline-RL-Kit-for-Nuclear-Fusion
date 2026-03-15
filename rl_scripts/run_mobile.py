@@ -68,9 +68,9 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="pres_EFIT01") #?
+    parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=5)
+    parser.add_argument("--cuda_id", type=int, default=0)
 
     return parser.parse_args()
 
@@ -145,7 +145,7 @@ def train(args=None):
     )
 
     termination_fn = env.is_done
-    reward_fn = sa_processor.get_reward
+    reward_fn = sa_processor.get_reward_new
     dynamics = EnsembleDynamics(
         dynamics_model,
         termination_fn,

@@ -77,9 +77,9 @@ def get_args():
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--update_hidden_states", type=bool, default=False) # whether to update the hidden states in the offline dataset, since the dynamics model is being updated with the rl policy
-    parser.add_argument("--cuda_id", type=int, default=7)
+    parser.add_argument("--cuda_id", type=int, default=1)
 
-    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+    parser.add_argument("--base-dir", type=str, default="/zfsauton2/home/jiayuc2/bao/synthesize_test/log")
 
     return parser.parse_args()
 
@@ -174,7 +174,7 @@ def train(args=get_args()):
     # dynamics_scaler = StandardScaler()
     # termination_fn = obs_unnormalization(get_termination_fn(task=args.task), obs_mean, obs_std)
     termination_fn = env.is_done
-    reward_fn = sa_processor.get_reward
+    reward_fn = sa_processor.get_reward_new
     dynamics = EnsembleDynamics(
         dynamics_model,
         termination_fn,

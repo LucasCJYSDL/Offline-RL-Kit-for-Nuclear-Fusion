@@ -49,7 +49,7 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # cannot be base
     parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=3) # -1 represents using cpus
+    parser.add_argument("--cuda_id", type=int, default=0) # -1 represents using cpus
 
     parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
 

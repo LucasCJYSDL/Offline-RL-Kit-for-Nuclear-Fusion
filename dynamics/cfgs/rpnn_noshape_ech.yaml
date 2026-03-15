@@ -6,18 +6,18 @@ nblocks: 5
 
 # To specify
 seed: 0
-ensemble_size: 5 
-outer_loop_size: 3 
+ensemble_size: 25 
+outer_loop_size: 1 #3 
 is_cheap: false
 alpha: 0.05
-is_hulc: true # tstatH: is_hulc = true and is_cheap = true
+is_hulc: false #True # tstatH: is_hulc = true and is_cheap = true
 hulc_bias: 0.0
-experiment_name: "rpnn_noshape_ech"
-data_path: "/zfsauton/project/fusion/data/organized/noshape_ech_synthesized"
-gt_model_path: "/zfsauton/project/fusion/models/rpnn_noshape_ech"
+experiment_name: "rpnn_noshape_gas_benchmark_hidden_align"
+data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
+gt_model_path: "/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_step2"
 
 trainer:
-    max_epochs: 2 # 1000 # To specify
+    max_epochs: 3000 # 1000 # To specify
     gpus: 1
 
 early_stopping:
@@ -66,7 +66,7 @@ model:
 data_module:
   _target_: dynamics.data_modules.KFoldSequenceFusionDataModule
   data_path: ${data_path}
-  batch_size: 8 # 1024 # To specify
+  batch_size: 512 # 1024 # To specify
   n_folds: 10 # To specify
   te_fold: 10 # To specify
   pin_memory: true
@@ -76,7 +76,7 @@ data_module:
   train_from_start_only: true
   prop_validation: 0.05 # To specify
   seed: ${seed} 
-  bootstrapped: false # To specify
+  bootstrapped: True # To specify
   B_star: -1
   ensemble_id: -1
 
