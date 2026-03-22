@@ -34,7 +34,7 @@ def get_args():
     # env settings
     parser.add_argument("--env", type=str, default="profile_control")#profile_control  profile_control_new
     parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
-
+    parser.add_argument("--test", action="store_true", help="Use test split instead of validation split")
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
@@ -272,7 +272,13 @@ def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
 def run(args=get_args()) -> None:
     # register an env
     args.device = torch.device("cuda".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
-    offline_data, sa_processor, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=args.il_actor) # these are the data and env used to train the actor
+    offline_data, sa_processor, env, _ = get_rl_data_envs(
+        args.env,
+        args.task,
+        args.device,
+        is_il=args.il_actor,
+        is_val= not args.test,
+    ) # these are the data and env used to train the actor
     if args.env == "fusion_env":
         args.obs_dim = offline_data['obs_dim']
         args.action_dim = offline_data['act_dim']
@@ -299,7 +305,8 @@ def run(args=get_args()) -> None:
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
-    log_folder = os.path.join(args.save_base_dir, actor_info[-2], args.task, "results", actor_info[-1], str(args.seed))
+    split_name = "val" if not args.test else "test"
+    log_folder = os.path.join(args.save_base_dir, actor_info[-2], args.task, split_name, "results", actor_info[-1], str(args.seed))
     os.makedirs(log_folder, exist_ok=True)
 
     for shot in shot_list:

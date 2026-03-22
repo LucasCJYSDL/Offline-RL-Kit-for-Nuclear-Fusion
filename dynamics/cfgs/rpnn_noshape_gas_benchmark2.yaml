@@ -1,0 +1,122 @@
+experiment_name: "rpnn_noshape_gas_curriculum"
+# save_path: "/home/scratch/rsonker/ech/dynamics_models/rpnn_qrfe_all_gauss1params_v2_nllmse"
+# data_path: "/home/scratch/rsonker/ech/data/organized/noshape_qrfe_all_gauss1params_v2"
+
+save_path: "/home/scratch/jiayuc2/bao/dynamic_models/rpnn_noshape_gas_benchmark_synthesize_step2"
+# data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_flattop_bmsinfo"
+#data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark"
+data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
+
+logger: tensorboard
+cuda_device: 3
+seed: 0
+normalization: "standardize"
+warm_up_period: 2
+nblocks: 5
+trainer:
+    max_epochs: 1000
+    gpus: 1
+early_stopping:
+    patience: 250
+    min_delta: 0.0
+    monitor: 'val/loss'
+    mode: 'min'
+model:
+    _target_: dynamics_toolbox.models.pl_models.sequential_models.rpnn.RPNN
+    load_dir: "/home/scratch/jiayuc2/bao/dynamic_models/rpnn_noshape_gas_benchmark_synthesize_step1"#?
+    encode_dim: 512
+    freeze_all_but: "logvar_net"
+    rnn_num_layers: 1
+    rnn_hidden_size: 256
+    learning_rate: 3e-4 
+    weight_decay: 1e-3
+    # add MSE to loss
+    loss_fn_str : "NLL"
+    add_mse_to_loss: False
+    mse_wt: 1.0
+    nll_wt: 1.0
+    encoder_cfg:
+       _target_: dynamics_toolbox.models.pl_models.mlp.MLP
+       num_layers: 1
+       layer_size: 512
+       hidden_activation: "relu"
+    pnn_decoder_cfg:
+      _target_: dynamics_toolbox.models.pl_models.pnn.PNN
+      encoder_output_dim: 128
+      logvar_lower_bound: -10
+      logvar_upper_bound: 0.5
+      encoder_cfg:
+         _target_: dynamics_toolbox.models.pl_models.residual_mlp_blocks.ResidualMLPBlocks
+         embed_dim: 512
+         num_layers_per_block: 1
+         num_blocks: ${nblocks}
+         hidden_activation: "relu"
+      mean_net_cfg:
+         _target_: dynamics_toolbox.models.pl_models.mlp.MLP
+         num_layers: 0
+         layer_size: 128
+         hidden_activation: "relu"
+      logvar_net_cfg:
+         _target_: dynamics_toolbox.models.pl_models.mlp.MLP
+         num_layers: 0
+         layer_size: 128
+         hidden_activation: "relu"
+    dim_name_map: 
+        - "BetaN"
+        - "dssdenest"
+        - "li"
+        # - "q0"
+        # - "q95"
+        - "n1rms"
+        # - "n2rms"
+        # - "n3rms"
+        - "vloop"
+        - "wmhd"
+        # - "DR"
+        # - "kappa"
+        # - "rmaxis"
+        # - "zmaxis"
+        # - "tm_label"
+        - "temp_pca1"
+        - "temp_pca2"
+        - "temp_pca3"
+        - "temp_pca4"
+        - "itemp_pca1"
+        - "itemp_pca2"
+        - "itemp_pca3"
+        - "itemp_pca4"
+        - "dens_pca1"
+        - "dens_pca2"
+        - "dens_pca3"
+        - "dens_pca4"
+        - "rotation_pca1"
+        - "rotation_pca2"
+        - "rotation_pca3"
+        - "rotation_pca4"
+        - "pres_pca1"
+        - "pres_pca2"
+        - "q_pca1"
+        - "q_pca2"
+
+data_module:
+  _target_: fusion_control.dynamics.data_modules.kfold_sequence_data_module.KFoldSequenceFusionDataModule
+  data_path: ${data_path}
+  batch_size: 512 #64
+  n_folds: 10
+  te_fold: 10
+  pin_memory: true
+  min_shot_amt: 4
+  shot_train_length: 225
+  num_workers: 8
+  train_from_start_only: true
+  prop_validation: 0.05
+  time_diff: 20
+  bootstrap: True
+#   val_shot_nums_path:  '/zfsauton2/home/rsonker/organized/val_positive_ec.npy' # additional validation set
+
+hydra:
+    run:
+        dir: ${save_path}/${seed}
+
+# mask_dim_name: 
+# - tm_label

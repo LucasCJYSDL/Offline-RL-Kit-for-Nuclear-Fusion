@@ -63,7 +63,7 @@ def get_args():
     parser.add_argument("--max_start_idx",  type=int, default=20)
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="temp") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="rot") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=0)
     return parser.parse_args()
@@ -90,7 +90,7 @@ def train(args=None):
     
     # offline rl data and env
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(
-        args.env, args.task, args.device
+        args.env, args.task, args.device,is_val=True
     )
     
     args.obs_shape = (offline_data['observations'].shape[1],)

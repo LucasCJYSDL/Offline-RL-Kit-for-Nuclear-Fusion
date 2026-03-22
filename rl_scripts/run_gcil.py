@@ -93,7 +93,7 @@ def GCIL(args, offline_data, env, logger): # this function is shared by some oth
 def train(args=get_args()):
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
-    offline_data, _, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=True)
+    offline_data, _, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=True,is_val=True)
     
     args.obs_shape = (offline_data['observations'].shape[1], )
     args.action_dim = offline_data['actions'].shape[1]

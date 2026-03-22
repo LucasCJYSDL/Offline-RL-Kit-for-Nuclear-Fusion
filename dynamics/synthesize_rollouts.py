@@ -38,12 +38,13 @@ def synthesize_rollouts(
     device,
 ):
     dataset = {
-        "observations": [],
-        "pre_actions": [],
-        "action_deltas": [],
-        "observation_deltas": [],
+        "states": [],
+        "actuators": [],
+        "next_actuators": [],
+        "next_states": [],
         "terminals": [],
         "shotnum": [],
+        "time": [],
     }
     rl_data = {
         "observations": [],
@@ -114,12 +115,12 @@ def synthesize_rollouts(
             next_state = cur_state + state_delta
             cur_action = pre_action + action_delta
 
-            dataset["observations"].append(cur_state.cpu().numpy())
-            dataset["pre_actions"].append(pre_action.cpu().numpy())
-            dataset["action_deltas"].append(action_delta.cpu().numpy())
-            dataset["observation_deltas"].append(state_delta.cpu().numpy())
-            dataset["terminals"].append(offline_dst["terminals"][t])
+            dataset["states"].append(cur_state.cpu().numpy())
+            dataset["actuators"].append(pre_action.cpu().numpy())
+            dataset["next_actuators"].append(action_delta.cpu().numpy())
+            dataset["next_states"].append(state_delta.cpu().numpy())
             dataset["shotnum"].append(cur_shot)
+            dataset["time"].append(offline_dst["time"][t])
 
             if cur_shot in rl_shot_list:
                 rl_shots_used.add(cur_shot)
@@ -194,19 +195,9 @@ def synthesize_rollouts(
         dataset[k] = np.array(dataset[k])
         print(k, dataset[k].shape)
 
-    dataset["action_lower_bounds"] = offline_dst["action_lower_bounds"].copy()
-    dataset["action_upper_bounds"] = offline_dst["action_upper_bounds"].copy()
-    dataset["action_positions_lower_bounds"] = offline_dst["action_positions_lower_bounds"].copy()
-    dataset["action_positions_upper_bounds"] = offline_dst["action_positions_upper_bounds"].copy()
-    dataset["action_velocity_lower_bounds"] = offline_dst["action_velocity_lower_bounds"].copy()
-    dataset["action_velocity_upper_bounds"] = offline_dst["action_velocity_upper_bounds"].copy()
-    dataset["states_positions_lower_bounds"] = offline_dst["states_positions_lower_bounds"].copy()
-    dataset["states_positions_upper_bounds"] = offline_dst["states_positions_upper_bounds"].copy()
-    dataset["states_velocity_lower_bounds"] = offline_dst["states_velocity_lower_bounds"].copy()
-    dataset["states_velocity_upper_bounds"] = offline_dst["states_velocity_upper_bounds"].copy()
-    dataset["pre_actions"] = np.clip(
-        dataset["pre_actions"], dataset["action_lower_bounds"], dataset["action_upper_bounds"]
-    )
+    action_lb = offline_dst["action_lower_bounds"]
+    action_ub = offline_dst["action_upper_bounds"]
+    dataset["actuators"] = np.clip(dataset["actuators"], action_lb, action_ub)
 
     os.makedirs(data_dir, exist_ok=True)
     with h5py.File(os.path.join(data_dir, "full.hdf5"), "w") as hdf:
@@ -304,7 +295,7 @@ if __name__ == "__main__":
     il_shot_list = list(range(reference_shot - 200, reference_shot + 200))
     tracking_shot_list = [161409, 161410, 161412]
 
-    synthesized_data_dir = raw_data_dir + "_synthesized1"
+    synthesized_data_dir = raw_data_dir + "_synthesized"
     rl_data_path = synthesized_data_dir + "/rl_data.h5"
     il_data_path = synthesized_data_dir + "/il_data.h5"
     tracking_data_path = synthesized_data_dir + "/tracking_data.h5"

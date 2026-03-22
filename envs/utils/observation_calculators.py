@@ -117,13 +117,15 @@ class PTerm(ObservationCalculator):
                 self.state_idx = info['state_space'].index(self.signal_name)
             curr = states[-1, self.state_idx]
         # pterm = curr - targets[:, -1, self.target_idx]
-        curr = np.expand_dims(curr, axis=0)
-        pterm = curr[:, np.newaxis] - targets[(states.shape[0]-1):, self.target_idx] #pterm is calculated for all target terms
+        curr = np.expand_dims(curr, axis=0)  # (1,)
+        target = targets[states.shape[0]-1, self.target_idx]  # scalar
+        pterm = curr - target
+        # curr = np.expand_dims(curr, axis=0)
+        # pterm = curr[:, np.newaxis] - targets[(states.shape[0]-1):, self.target_idx] #pterm is calculated for all target terms
         if self.invert_sign:
             pterm *= -1
         return (
-            # pterm.reshape(-1, 1),
-            pterm,
+            pterm.reshape(-1, 1),
             None,
             # {f'{self.signal_name}_pterm': pterm.reshape(-1, 1)},
             {f'{self.signal_name}_pterm': pterm},

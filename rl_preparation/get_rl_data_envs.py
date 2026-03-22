@@ -29,13 +29,41 @@ from rl_preparation.state_actuator_spaces import (
     target_highs,
     horizon
 )
-from rl_preparation.process_raw_data import raw_data_dir, rl_data_path, il_data_path, tracking_data_path, reference_shot, training_model_dir, evaluation_model_dir, change_every
+from rl_preparation.process_raw_data import (
+    raw_data_dir,
+    rl_data_path,
+    il_data_path,
+    tracking_val_data_path,
+    tracking_test_data_path,
+    reference_shot,
+    training_model_dir,
+    evaluation_model_dir,
+    change_every,
+)
 from envs.utils.setup_targets import fixed_ref_shot_targets, step_function_targets, original_trajectory_targets, uniform_targets,original_trajectory_targets_new,uniform_targets_new
 
+def _get_tracking_data_path(is_val):
+    return tracking_val_data_path if is_val else tracking_test_data_path
+
+
+def _get_tracking_shot_ids(path):
+    with h5py.File(path, 'r') as hdf:
+        return sorted(int(shot_id) for shot_id in hdf.keys())
+
+
+def _get_bootstrap_shot_id(path):
+    shot_ids = _get_tracking_shot_ids(path)
+    if not shot_ids:
+        raise ValueError(f"No tracking shots found in {path}")
+    if reference_shot in shot_ids:
+        return reference_shot
+    return shot_ids[0]
 # load the offline dataset from the disk
-def load_offline_data(env, tracking_target, is_il):
+def load_offline_data(env, tracking_target, is_il, is_val=True):
     # get general data 
     offline_data = {}
+    tracking_data_path = _get_tracking_data_path(is_val)
+    bootstrap_shot_id = _get_bootstrap_shot_id(tracking_data_path)
 
     if is_il:
         general_data_path = il_data_path
@@ -89,8 +117,7 @@ def load_offline_data(env, tracking_target, is_il):
     tracking_data = {} 
 
     with h5py.File(tracking_data_path, 'r') as hdf:
-        ref_shot = hdf[str(reference_shot)]['tracking_states'][:]
-        ref_shot_next = hdf[str(reference_shot)]['tracking_next_states'][:]
+        ref_shot_next = hdf[str(bootstrap_shot_id)]['tracking_next_states'][:]
 
         for shot_id in hdf:
             tracking_data[int(shot_id)] = {}
@@ -164,34 +191,65 @@ def load_offline_data(env, tracking_target, is_il):
     offline_data['obs_dim'] = offline_data['observations'].shape[1]
     offline_data['act_dim'] = offline_data['actions'].shape[1]
     offline_data['index_list'] = get_target_indices(tracking_target, offline_data['obs_dim'])
+    offline_data['bootstrap_tracking_shot_id'] = bootstrap_shot_id
 
     return offline_data, tracking_data
 
 # get the offline rl data (in d4rl format) and training
-def get_rl_data_envs(env_id, task, device, is_il=False):
-    offline_data, tracking_data = load_offline_data(env_id, task, is_il)
+def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True):
+    offline_data, tracking_data = load_offline_data(env_id, task, is_il, is_val=is_val)
+    bootstrap_shot_id = offline_data['bootstrap_tracking_shot_id']
+
 
     if env_id == 'base':
         from envs.base_env import NFBaseEnv, SA_processor
         sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = NFBaseEnv(evaluation_model_dir, sa_processor, offline_data, tracking_data[reference_shot], reference_shot, device) # this is the env for evaluation
+        env = NFBaseEnv(
+            evaluation_model_dir,
+            sa_processor,
+            offline_data,
+            tracking_data[bootstrap_shot_id],
+            bootstrap_shot_id,
+            device,
+        ) # this is the env for evaluation
 
     elif env_id == 'profile_control':
         from envs.profile_control_env import ProfileControlEnv
         from envs.base_env import SA_processor
         sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = ProfileControlEnv(evaluation_model_dir, sa_processor, offline_data, tracking_data, reference_shot, device) # this is the env for evaluation
+        env = ProfileControlEnv(
+            evaluation_model_dir,
+            sa_processor,
+            offline_data,
+            tracking_data,
+            bootstrap_shot_id,
+            device,
+        ) # this is the env for evaluation
     
     elif env_id == 'profile_control_new':
         from envs.profile_control_new_state_env import ProfileControlEnv
         from envs.profile_control_new_state_env import SA_processor
         sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = ProfileControlEnv(evaluation_model_dir, sa_processor, offline_data, tracking_data, reference_shot, device) # this is the env for evaluation
+        env = ProfileControlEnv(
+            evaluation_model_dir,
+            sa_processor,
+            offline_data,
+            tracking_data,
+            bootstrap_shot_id,
+            device,
+        ) # this is the env for evaluation
 
     elif env_id == 'fusion_env':
         from envs.fusion_env import FusionEnv, SA_processor
         sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = FusionEnv(evaluation_model_dir, sa_processor, offline_data, tracking_data, reference_shot, device)
+        env = FusionEnv(
+            evaluation_model_dir,
+            sa_processor,
+            offline_data,
+            tracking_data,
+            bootstrap_shot_id,
+            device,
+        )
     
     else:
         raise NotImplementedError
