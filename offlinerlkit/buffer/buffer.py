@@ -117,11 +117,11 @@ class ReplayBuffer:
     
     # real buffer
     def load_dataset(self, dataset: Dict[str, np.ndarray], hidden=False) -> None:
-        observations = np.array(dataset["observations"], dtype=self.obs_dtype)
-        next_observations = np.array(dataset["next_observations"], dtype=self.obs_dtype)
-        actions = np.array(dataset["actions"], dtype=self.action_dtype)
-        rewards = np.array(dataset["rewards"], dtype=np.float32).reshape(-1, 1)
-        terminals = np.array(dataset["terminals"], dtype=np.float32).reshape(-1, 1)
+        observations = dataset["observations"].astype(self.obs_dtype, copy=False)
+        next_observations = dataset["next_observations"].astype(self.obs_dtype, copy=False)
+        actions = dataset["actions"].astype(self.action_dtype, copy=False)
+        rewards = dataset["rewards"].astype(np.float32, copy=False).reshape(-1, 1)
+        terminals = dataset["terminals"].astype(np.float32, copy=False).reshape(-1, 1)
 
         self.observations = observations
         self.next_observations = next_observations
@@ -133,13 +133,13 @@ class ReplayBuffer:
         self._size = len(observations)
 
         if "full_observations" in dataset:
-            self.full_observations = np.array(dataset["full_observations"], dtype=self.obs_dtype)
-            self.pre_actions = np.array(dataset["pre_actions"], dtype=self.action_dtype)
-            self.full_actions = np.array(dataset["full_actions"], dtype=self.action_dtype)
-            self.time_steps = np.array(dataset["time_step"]).reshape(-1, 1)
+            self.full_observations = dataset["full_observations"].astype(self.obs_dtype, copy=False)
+            self.pre_actions = dataset["pre_actions"].astype(self.action_dtype, copy=False)
+            self.full_actions = dataset["full_actions"].astype(self.action_dtype, copy=False)
+            self.time_steps = dataset["time_step"].reshape(-1, 1)
             if hidden:
-                self.hidden_states = np.array(dataset["hidden_states"], dtype=np.float32)
-                self.full_next_observations = np.array(dataset["full_next_observations"], dtype=self.obs_dtype)
+                self.hidden_states = dataset["hidden_states"].astype(np.float32, copy=False)
+                self.full_next_observations = dataset["full_next_observations"].astype(self.obs_dtype, copy=False)
     
     # real buffer
     def normalize_obs(self, eps: float = 1e-3) -> Tuple[np.ndarray, np.ndarray]:

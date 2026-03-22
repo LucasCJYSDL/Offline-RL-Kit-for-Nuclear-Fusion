@@ -59,7 +59,7 @@ def _get_bootstrap_shot_id(path):
         return reference_shot
     return shot_ids[0]
 # load the offline dataset from the disk
-def load_offline_data(env, tracking_target, is_il, is_val=True):
+def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_states=False):
     # get general data 
     offline_data = {}
     tracking_data_path = _get_tracking_data_path(is_val)
@@ -88,7 +88,7 @@ def load_offline_data(env, tracking_target, is_il, is_val=True):
     offline_data['states_velocity_lower_bounds'] = hdf['states_velocity_lower_bounds'][:]
     offline_data['states_velocity_upper_bounds'] = hdf['states_velocity_upper_bounds'][:]
     offline_data['traj_start_indices'] = hdf['traj_start_indices'][:]
-    if not is_il:
+    if (not is_il) and load_hidden_states:
         offline_data['hidden_states'] = hdf['hidden_states'][:]
     hdf.close()
     
@@ -196,8 +196,14 @@ def load_offline_data(env, tracking_target, is_il, is_val=True):
     return offline_data, tracking_data
 
 # get the offline rl data (in d4rl format) and training
-def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True):
-    offline_data, tracking_data = load_offline_data(env_id, task, is_il, is_val=is_val)
+def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True, load_hidden_states=False):
+    offline_data, tracking_data = load_offline_data(
+        env_id,
+        task,
+        is_il,
+        is_val=is_val,
+        load_hidden_states=load_hidden_states,
+    )
     bootstrap_shot_id = offline_data['bootstrap_tracking_shot_id']
 
 

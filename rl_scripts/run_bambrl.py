@@ -76,7 +76,7 @@ def get_args():
     parser.add_argument("--search_with_hidden_state", type=bool, default=False) # when you do MCTS, whether to use the hidden state of the rpnn dynamics model; time-costly if true
     parser.add_argument("--cuda_id", type=int, default=4)
 
-    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+    parser.add_argument("--base-dir", type=str, default="/zfsauton2/home/jiayuc2/bao/synthesize_test_all/log")
 
     return parser.parse_args()
 
@@ -89,7 +89,13 @@ def train(args=get_args()):
     
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
-    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device,is_val=True)
+    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(
+        args.env,
+        args.task,
+        args.device,
+        is_val=True,
+        load_hidden_states=True,
+    )
 
     args.obs_shape = (offline_data['observations'].shape[1], )
     args.action_dim = offline_data['actions'].shape[1]

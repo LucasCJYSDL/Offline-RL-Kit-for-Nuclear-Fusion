@@ -85,7 +85,13 @@ def train(args=None):
     args = normalize_args(args)
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
-    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device,is_val=True)
+    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(
+        args.env,
+        args.task,
+        args.device,
+        is_val=True,
+        load_hidden_states=True,
+    )
 
     args.obs_shape = (offline_data['observations'].shape[1], )
     args.action_dim = offline_data['actions'].shape[1]

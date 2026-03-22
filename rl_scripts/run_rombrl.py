@@ -89,7 +89,13 @@ def train(args=get_args()):
         args.small_traj_batch = False
 
     # offline rl data and env
-    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device,is_val=True)
+        offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(
+        args.env,
+        args.task,
+        args.device,
+        is_val=True,
+        load_hidden_states=True,
+    )
 
     args.obs_shape = (offline_data['observations'].shape[1], )
     args.action_dim = offline_data['actions'].shape[1]
