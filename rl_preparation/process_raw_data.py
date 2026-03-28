@@ -39,7 +39,8 @@ change_every = 50 # change the tracking target every () time steps
 # save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_out_of_range"
 # save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_out_of_range_old"
 
-save_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_dymodel_all"
+save_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_dymodel_all_filter"
+
 
 os.makedirs(save_data_dir, exist_ok=True)
 

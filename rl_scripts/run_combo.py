@@ -48,7 +48,7 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
 
-    parser.add_argument("--cql-weight", type=float, default=5.0)#5
+    parser.add_argument("--cql-weight", type=float, default=0.1)#5
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=True)
@@ -61,7 +61,7 @@ def get_args():
 
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
-    parser.add_argument("--rollout-length", type=int, default=1)#5
+    parser.add_argument("--rollout-length", type=int, default=10)#5
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.5)
 
@@ -77,9 +77,9 @@ def get_args():
 
     # Environment settings
     parser.add_argument("--env", type=str, default="profile_control_new")
-    parser.add_argument("--task", type=str, default="pres_EFIT01")
+    parser.add_argument("--task", type=str, default="rotation")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=4)
+    parser.add_argument("--cuda_id", type=int, default=0)
 
     return parser.parse_args()
 
@@ -100,7 +100,7 @@ def train(args=None):
     
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
-    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device,is_val=True)
+    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device,is_val=True, load_hidden_states=True)
 
     args.obs_shape = (offline_data['observations'].shape[1], )
     args.action_dim = offline_data['actions'].shape[1]

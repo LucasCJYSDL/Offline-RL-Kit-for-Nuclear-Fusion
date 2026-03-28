@@ -74,7 +74,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--search_with_hidden_state", type=bool, default=False) # when you do MCTS, whether to use the hidden state of the rpnn dynamics model; time-costly if true
-    parser.add_argument("--cuda_id", type=int, default=4)
+    parser.add_argument("--cuda_id", type=int, default=0)
 
     parser.add_argument("--base-dir", type=str, default="/zfsauton2/home/jiayuc2/bao/synthesize_test_all/log")
 

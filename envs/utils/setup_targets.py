@@ -25,6 +25,47 @@ def step_function_targets(obs_seq, target_idxs, terminal_seq, change_every=50):
 
     return targets
 
+
+def two_stage_step_targets(obs_seq, target_idxs, terminal_seq):
+    """
+    For each shot / episode, use exactly two targets:
+    - first half: the last step of the first half
+    - second half: the final step of the episode
+    """
+    tot_len = len(obs_seq)
+    target_dim = len(target_idxs)
+
+    if terminal_seq is None:
+        terminal_seq = np.zeros((tot_len,), dtype=bool)
+        terminal_seq[-1] = True
+
+    targets = np.zeros((tot_len, target_dim), dtype=np.float32)
+    s_id = 0
+
+    for i in range(len(terminal_seq)):
+        if terminal_seq[i] or i == (len(terminal_seq) - 1):
+            episode_obs = obs_seq[s_id:i + 1]
+            episode_len = len(episode_obs)
+
+            if episode_len == 0:
+                s_id = i + 1
+                continue
+
+            midpoint = episode_len // 2
+            if midpoint == 0:
+                midpoint = 1
+
+            first_target = episode_obs[midpoint - 1][target_idxs]
+            second_target = episode_obs[-1][target_idxs]
+
+            targets[s_id:s_id + midpoint] = first_target
+            targets[s_id + midpoint:i + 1] = second_target
+
+            s_id = i + 1
+
+    return targets
+
+
 def fixed_ref_shot_targets(ref_obs_seq, target_idxs, terminal_seq):
     """
     Use tracking targets in a reference shot as the targets for each shot in the offline dataset.
@@ -118,7 +159,7 @@ def original_trajectory_targets(obs_seq, target_idxs,horizon, terminal_seq,
         terminal_seq = np.zeros((tot_len), dtype=bool)
         terminal_seq[-1] = True
     
-    targets = np.zeros((horizon, obs_seq.shape[1]), dtype=np.float32)
+    targets = np.zeros((tot_len, obs_seq.shape[1]), dtype=np.float32)
     
     # Split data into episodes based on terminal_seq
     episodes = _split_into_episodes(obs_seq, terminal_seq)
@@ -143,17 +184,17 @@ def original_trajectory_targets(obs_seq, target_idxs,horizon, terminal_seq,
         
         # Generate targets for this episode
         episode_targets = _generate_original_trajectory_targets(
-            ref_episode, target_idxs, horizon, eval_mode, fixed_profile_target
+            ref_episode, target_idxs, tot_len, eval_mode, fixed_profile_target
         )
         
         targets = episode_targets
-        s_id += horizon
+        s_id += tot_len
     
     return targets[:, target_idxs]#150
 
 
-def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon, 
-                                        eval_mode, fixed_profile_target):
+def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon,
+                                        eval_mode, fixed_profile_target, triple_target=True):
     """
     Generate targets for a single episode, exactly like OriginalTrajectoryTarget.
     
@@ -171,7 +212,7 @@ def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon,
     
         # Extract target dimensions from reference episode (simulates original code: target = trajectories[r_]['states'][start_idx:horizon+start_idx, :])
     if len(ref_episode) > 0:
-        target = ref_episode[:150,:]
+        target = ref_episode[:horizon, :]
         
         # Handle length mismatch 
         if len(target) < horizon:
@@ -190,33 +231,28 @@ def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon,
     
     # Apply fixed profile processing 
     if fixed_profile_target:
-        # pick two samples from given trajectory and repeat them
+        # Match the newer target-selection heuristic while keeping indices valid for short horizons.
+        midpoint = horizon // 2
         if eval_mode:
-            midpoint = horizon // 2 
-            t1 = midpoint - 35
-            t2 = midpoint + 35
+            t1 = midpoint - 35 #+ 50
+            t2 = midpoint  #- 40
         else:
-            midpoint = horizon // 2
             quaterpoint = int(horizon * 0.65)
-            if midpoint >= quaterpoint:
-                t1 = midpoint 
-            else:
-                t1 = np.random.randint(midpoint, quaterpoint)
+            t1 = np.random.randint(midpoint, quaterpoint)
+            t2 = np.random.randint(quaterpoint,  horizon)
 
-            t2 = np.random.randint(quaterpoint, horizon)
-            
-            #t2=quaterpoint+3
-            # flip t1 and t2 by some probability
-            if np.random.rand() > 0.5:
-                t1, t2 = t2, t1
-            # print(f"t1: {t1}")
-            # print(f"t2: {t2}")
-  
         # repeat t1 timepoint till midpoint and t2 timepoint till end
         new_target = np.vstack((
             np.tile(target[t1, :], (midpoint, 1)),
             np.tile(target[t2, :], (horizon - midpoint, 1))
         ))
+        if triple_target:
+            diff = int(0.25 * midpoint)
+            new_target = np.vstack((
+                np.tile(target[t1, :], (midpoint - diff, 1)),
+                np.tile(target[t2, :], (2*diff,1)),
+                np.tile(target[t1, :], (horizon - midpoint - diff,1))
+            ))
         target = new_target
     
     # If fixed_profile_target=False, directly return original target sequence
@@ -274,27 +310,20 @@ def original_trajectory_targets_new(obs_seq, target_idxs,horizon, terminal_seq,
             # Use current episode as reference
             ref_episode = episode_obs
         
+        episode_len = len(episode_obs)
         # Generate targets for this episode
         episode_targets = _generate_original_trajectory_targets(
-            ref_episode, target_idxs, horizon, eval_mode, fixed_profile_target
+            ref_episode, target_idxs, episode_len, eval_mode, fixed_profile_target
         )
     
-        episode_len = len(episode_obs)
-        
-        if episode_len <= 150:
-            # If episode is shorter than 150, take only the needed rows
-            targets[s_id:s_id+episode_len] = episode_targets[:episode_len]
-        else:
-            # If episode is longer than 150, pad with the last value
-            targets[s_id:s_id+150] = episode_targets
-            # Repeat the last value for the remaining rows
-            last_value = episode_targets[-1]
-            targets[s_id+150:s_id+episode_len] = np.tile(last_value, (episode_len-150, 1))
+        # If episode is shorter than the target horizon, take only the needed rows.
+        targets[s_id:s_id+episode_len] = episode_targets[:episode_len]
+
         
         # Update s_id for next episode
         s_id += episode_len
     
-    return targets[:, target_idxs]#150
+    return targets[:, target_idxs]
 
 
 
@@ -310,4 +339,3 @@ def _split_into_episodes(obs_seq, terminal_seq):
             s_id = i + 1
     
     return episodes
-

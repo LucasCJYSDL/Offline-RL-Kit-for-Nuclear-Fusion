@@ -609,7 +609,6 @@ class ProfileTrackingReward(RewardFunction):
                 self.track_idxs.append(info['state_space'].index(sig))
 
         for pname in self.profile_name:
-            # profile = self._reconstruct_profile(nxts, info, pname, unnormalize=self.unnormalize)
             profile = reconstruct_profile_from_state(profile_name=pname, states=nxts, info=info,target_index=None, unnormalize=self.unnormalize)
             # create an array called targets which has zeros filled out indices not track_idxs
             # full_targets = np.zeros((nxts.shape[0], nxts.shape[1]))
@@ -624,15 +623,6 @@ class ProfileTrackingReward(RewardFunction):
             else:
                 total_reward = total_reward + -1 * np.dot(np.abs(profile - target_profile), self.track_coefficients).flatten()
 
-        
-        #component 1 reward
-        #comp1_reward = -1 * np.square(nxts[-1,self.track_idxs[0]] - targets[-1, self.track_idxs[0]])
-
-        # total_reward = comp1_reward
-
-        # if total_reward<-5:
-        #     print("\nReward  = ", total_reward)
-        #     print("Component 1 reward = ", comp1_reward)
         
         return total_reward
 

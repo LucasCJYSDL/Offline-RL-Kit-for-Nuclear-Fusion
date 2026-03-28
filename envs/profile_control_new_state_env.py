@@ -16,7 +16,6 @@ from rl_preparation.state_actuator_spaces import (
     reward_function,
     target_lows,
     target_highs,
-    horizon
 )
 
 class SA_processor: # used for both training and evaluation
@@ -41,9 +40,17 @@ class SA_processor: # used for both training and evaluation
           self.info = pickle.load(file)
 
         # store the tracking taregts for both the training and evaluation data
-        training_data_size = offline_data['tracking_ref'].shape[0] #151
-        self.training_tracking_targets = np.array([offline_data['tracking_ref'][-1] for _ in range(training_data_size + self.k_step_targets_in_obs)])
-        self.training_tracking_targets[:training_data_size] = offline_data['tracking_ref']
+        self.training_data_size = offline_data['tracking_ref'].shape[0] #151
+        self.training_tracking_targets = np.array([offline_data['tracking_ref'][-1] for _ in range(self.training_data_size + self.k_step_targets_in_obs)])
+        self.training_tracking_targets[:self.training_data_size] = offline_data['tracking_ref']
+        terminals = offline_data['terminals'].reshape(-1).astype(bool)
+        self.training_episode_last_idx = np.zeros(self.training_data_size, dtype=np.int32)
+        episode_start = 0
+        for terminal_idx in np.flatnonzero(terminals):
+            self.training_episode_last_idx[episode_start:terminal_idx + 1] = terminal_idx
+            episode_start = terminal_idx + 1
+        if episode_start < self.training_data_size:
+            self.training_episode_last_idx[episode_start:] = self.training_data_size - 1
 
         self.eval_tracking_targets = {}
         self.eval_traj_states = {}
@@ -80,6 +87,27 @@ class SA_processor: # used for both training and evaluation
             batch_idx,
             shot_id=shot_id
         )
+    
+    def _get_concatenated_targets(self, targets_source, batch_idx, offsets=None):
+        batch_idx = np.asarray(batch_idx, dtype=np.int64).reshape(-1)
+        max_valid_idx = min(self.training_data_size, targets_source.shape[0]) - 1
+        batch_idx = np.clip(batch_idx, 0, max_valid_idx)
+        episode_last_idx = np.minimum(self.training_episode_last_idx[batch_idx], max_valid_idx)
+
+        if offsets is None:
+            target_indices = batch_idx
+            return targets_source[target_indices]
+
+        offsets = np.asarray(offsets, dtype=np.int64).reshape(-1)
+        target_indices = np.minimum(batch_idx[np.newaxis, :] + offsets[:, np.newaxis], episode_last_idx[np.newaxis, :])
+        return targets_source[target_indices]
+
+    def _gather_targets(self, targets_source, batch_idx, offsets):
+        batch_idx = np.asarray(batch_idx, dtype=np.int64).reshape(-1)
+        offsets = np.asarray(offsets, dtype=np.int64).reshape(-1)
+        max_valid_idx = targets_source.shape[0] - 1
+        target_indices = np.clip(batch_idx[np.newaxis, :] + offsets[:, np.newaxis], 0, max_valid_idx)
+        return targets_source[target_indices]
         
     
     def get_rl_state(self, state, batch_idx, shot_id=None, target=None):
@@ -101,16 +129,20 @@ class SA_processor: # used for both training and evaluation
             else:
                 targets_source = self.eval_tracking_targets[shot_id]
         
-
         if self.discrete_k_target_idx_in_obs is not None:
-
-            idx_to_use = np.array([batch_idx + k for k in self.discrete_k_target_idx_in_obs])
-            targets = targets_source[idx_to_use[:], :]
-                
+            offsets = np.array(self.discrete_k_target_idx_in_obs)
         else:
-            idx_to_use = np.array([batch_idx + k for k in range(self.k_step_targets_in_obs)])
-            targets = targets_source[idx_to_use[:], :]
+            offsets = np.arange(self.k_step_targets_in_obs)
+
+        # if self.discrete_k_target_idx_in_obs is not None:
+
+        #     idx_to_use = np.array([batch_idx + k for k in self.discrete_k_target_idx_in_obs])
+        #     targets = targets_source[idx_to_use[:], :]
                 
+        # else:
+        #     idx_to_use = np.array([batch_idx + k for k in range(self.k_step_targets_in_obs)])
+        #     targets = targets_source[idx_to_use[:], :]
+        targets = self._get_concatenated_targets(targets_source, batch_idx, offsets)   
 
 
         if not is_np:
@@ -230,8 +262,7 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         self.tracking_states, self.tracking_pre_actions, self.tracking_actions = self.tracking_data[self.ref_shot_id]['tracking_states'], \
                                                                                  self.tracking_data[self.ref_shot_id]['tracking_pre_actions'], \
                                                                                  self.tracking_data[self.ref_shot_id]['tracking_actions']
-        #self.cur_shot_time_limit = self.tracking_states.shape[0]
-        self.cur_shot_time_limit = 150
+        self.cur_shot_time_limit = self.tracking_states.shape[0]
         
         # randomly sample an initial time step
         # self.cur_time = random.randint(0, 9) # TODO
@@ -288,7 +319,7 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
 
         # new to this env
         done = self.is_done(self.cur_time)
-        done = done | (self.cur_time >= self.cur_shot_time_limit)
+        # done = done | (self.cur_time >= self.cur_shot_time_limit)
 
         if batch_size > 1:
             done = np.array([done for _ in range(batch_size)])
