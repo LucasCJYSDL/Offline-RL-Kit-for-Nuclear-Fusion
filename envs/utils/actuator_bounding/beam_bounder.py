@@ -8,8 +8,8 @@ from typing import Any, Dict
 
 import numpy as np
 
-from fusion_control.envs.actuator_bounding.actuator_bounder import ActuatorBounder
-from fusion_control.envs.actuator_bounding.beam import prepare_d3d_beams
+from envs.utils.actuator_bounding.actuator_bounder import ActuatorBounder
+from envs.utils.actuator_bounding.beam import prepare_d3d_beams
 
 
 class D3dTotalPowerTorqueBounding(ActuatorBounder):

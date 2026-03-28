@@ -13,11 +13,11 @@ from envs.utils.data_preprocess import get_raw_data, store_offlinerl_dataset
 #!!! what you need to specify
 #raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_flattop" # the raw data  #/zfsauton/project/fusion/data/organized/minimal_cakenn_v4_expand_cont0002_noq_fix
 #raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
-raw_data_dir= "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_dymodel_all"
+raw_data_dir= "/data/datasets/noshape_gas_benchmark_synthesized_dymodel_all"
 #training_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
 #evaluation_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # the rpnn dynamics model for evaluation, which can be different from the training one #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final
-training_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_synthesize_step2" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
-evaluation_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_synthesize_step2"
+training_model_dir = "/data/models/rpnn_noshape_gas_benchmark_synthesize_step2" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
+evaluation_model_dir = "/data/models/rpnn_noshape_gas_benchmark_synthesize_step2"
 action_bound_file = "noshape_gas_flattop.yaml" # actuator bounds, which you probably don't need to change
 state_bound_file = "noshape_gas_flattop.yaml" # state bounds, which you probably don't need to change
 reference_shot = 161409 # 189268 161412
@@ -39,7 +39,7 @@ change_every = 50 # change the tracking target every () time steps
 # save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_out_of_range"
 # save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_out_of_range_old"
 
-save_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_dymodel_all_filter"
+save_data_dir = "/data/datasets/noshape_gas_benchmark_synthesized_dymodel_all_filter"
 
 
 os.makedirs(save_data_dir, exist_ok=True)
