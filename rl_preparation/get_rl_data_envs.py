@@ -31,6 +31,7 @@ from rl_preparation.state_actuator_spaces import (
 )
 from rl_preparation.process_raw_data import (
     raw_data_dir,
+    full_data_path,
     rl_data_path,
     il_data_path,
     tracking_val_data_path,
@@ -69,7 +70,7 @@ def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_stat
         general_data_path = il_data_path
     else:
         general_data_path = rl_data_path
-    
+    hdf_full = h5py.File(full_data_path, 'r')
     hdf = h5py.File(general_data_path, 'r')
     offline_data['observations'] = hdf['observations'][:]
     offline_data['actions'] = hdf['actions'][:]
@@ -124,7 +125,7 @@ def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_stat
             shot = hdf[shot_id]
             for key in shot:
                 tracking_data[int(shot_id)][key] = shot[key][:]
-
+            tracking_data[int(shot_id)]['time'] = hdf_full['time'][ np.where(hdf_full['shotnum'][:] == int(shot_id))] 
             # get targets for the tracking data (evaluation)
             if env == "base":
                 tracking_data[int(shot_id)]['tracking_ref'] = fixed_ref_shot_targets(ref_shot_next, offline_data['index_list'], None)

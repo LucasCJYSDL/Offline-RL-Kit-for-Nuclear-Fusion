@@ -258,33 +258,33 @@ def get_tuning_args():
     parser = argparse.ArgumentParser(description="Generic Optuna-based hyperparameter tuner for offline RL")
     
     # Algorithm and configuration
-    parser.add_argument("--algo", type=str,default="combo",
+    parser.add_argument("--algo", type=str,default="mobile",
                        help="Algorithm to tune (must exist in config file)")
-    parser.add_argument("--config", type=str, default="/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit-for-Nuclear-Fusion/rl_scripts/algo_config.json",
+    parser.add_argument("--config", type=str, default="/export/pgs/fuyang/Offline-RL-Kit-for-Nuclear-Fusion/rl_scripts/algo_config.json",
                        help="Path to algorithm configuration JSON file")
     
     # Environment settings
     parser.add_argument("--env", type=str, default="profile_control_new",
                        help="Environment name")
-    parser.add_argument("--task", type=str, default="temp",
+    parser.add_argument("--task", type=str, default="rot",
                        help="Task name")
     parser.add_argument("--cuda-id", type=int, default=7,
                        help="Default CUDA device ID (used if --gpu-ids not specified)")
-    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[0, 1, 4, 6],
+    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[1, 4, 2, 8, 9],
                        help="List of GPU IDs to use for parallel trials (e.g., --gpu-ids 0 1 2 3)")
     parser.add_argument("--seed", type=int, default=1,
                        help="Base random seed")
     
     # Optuna settings
-    parser.add_argument("--n-trials", type=int, default=25,
+    parser.add_argument("--n-trials", type=int, default=30,
                        help="Number of optimization trials")
     parser.add_argument("--study-name", type=str, default=None,
                        help="Optuna study name (default: {algo}_optimization)")
-    parser.add_argument("--storage", type=str, default="sqlite:////home/scratch/jiayuc2/fy/optuna_study_temp.db",
+    parser.add_argument("--storage", type=str, default="sqlite:////export/pgs/fuyang/tune/optuna_study_rot.db",
                        help="Optuna storage URL for distributed optimization")
-    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/fy",
+    parser.add_argument("--output-dir", type=str, default="/export/pgs/fuyang/tune",
                        help="Directory to save optimization results")
-    parser.add_argument("--n-jobs", type=int, default=4,
+    parser.add_argument("--n-jobs", type=int, default=5,
                        help="Number of parallel jobs (one per GPU recommended)")
     
     return parser.parse_args()

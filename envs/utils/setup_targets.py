@@ -190,7 +190,7 @@ def original_trajectory_targets(obs_seq, target_idxs,horizon, terminal_seq,
         targets = episode_targets
         s_id += tot_len
     
-    return targets[:, target_idxs]#150
+    return targets[:, target_idxs]
 
 
 def _generate_original_trajectory_targets(ref_episode, target_idxs, horizon,

@@ -52,6 +52,7 @@ os.makedirs(save_data_dir, exist_ok=True)
 # # tracking_shot_list = list(range(reference_shot - 5, reference_shot + 5)) # we would test the policy by tracking shots in this list 
 # tracking_shot_list =  [161409, 161410, 161412]
 # # tracking_shot_list = [161609, 161610, 161611] #out of range
+full_data_path = save_data_dir + '/full.hdf5'
 rl_data_path = save_data_dir + '/rl_data.h5'
 il_data_path = save_data_dir + '/il_data.h5'
 tracking_val_data_path = save_data_dir + '/tracking_val.h5'

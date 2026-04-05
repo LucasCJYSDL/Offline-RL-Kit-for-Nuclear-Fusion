@@ -45,8 +45,8 @@ def get_args():
 
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
-    parser.add_argument("--rollout-length", type=int, default=5)
-    parser.add_argument("--penalty-coef", type=float, default=2.5)
+    parser.add_argument("--rollout-length", type=int, default=5)#7
+    parser.add_argument("--penalty-coef", type=float, default=0.5)#2.5
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.05)
 
@@ -57,9 +57,9 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="dens") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=0)
+    parser.add_argument("--cuda_id", type=int, default=1)
 
     return parser.parse_args()
 

@@ -51,10 +51,13 @@ class SA_processor: # used for both training and evaluation
             episode_start = terminal_idx + 1
         if episode_start < self.training_data_size:
             self.training_episode_last_idx[episode_start:] = self.training_data_size - 1
+        
+        
 
         self.eval_tracking_targets = {}
         self.eval_traj_states = {}
         self.eval_traj_actions = {}
+        self.times = {}
         for key in tracking_data: # to avoid indexing issue, we use a padding trick here
             tracking_data_size = tracking_data[key]['tracking_ref'].shape[0]
             self.eval_tracking_targets[key] = np.array([tracking_data[key]['tracking_ref'][-1] for _ in range(tracking_data_size+self.k_step_targets_in_obs)])
@@ -62,6 +65,7 @@ class SA_processor: # used for both training and evaluation
             # self.eval_data_sizes[key] = tracking_data[key]['tracking_ref'].shape[0]
             self.eval_traj_states[key] = tracking_data[key]["tracking_states"]
             self.eval_traj_actions[key] = tracking_data[key]["tracking_actions"]
+            self.times[key] =  tracking_data[key]["time"]
         
         # store idxs of the tracking targets to query them from the state
         # there could be multiple dimensions of the tracking target, so we may assign different coefficients to different dimensions.

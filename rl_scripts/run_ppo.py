@@ -45,9 +45,9 @@ def get_args():
     parser.add_argument("--vf-coef", type=float, default=1)
     parser.add_argument("--max-grad-norm", type=float, default=0.5)
  #   parser.add_argument("--hidden-dims", type=int, nargs='*', default=[250, 250])
-    parser.add_argument("--pol-hidden-dims", type=int, nargs='*', default=[500, 500],
+    parser.add_argument("--pol-hidden-dims", type=int, nargs='*', default=[256, 256],
                        help="Policy network hidden layer dimensions")
-    parser.add_argument("--val-hidden-dims", type=int, nargs='*', default=[500, 500],
+    parser.add_argument("--val-hidden-dims", type=int, nargs='*', default=[256, 265],
                        help="Value network hidden layer dimensions")
     
     # training parameters
@@ -63,9 +63,9 @@ def get_args():
     parser.add_argument("--max_start_idx",  type=int, default=20)
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rot") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="dens") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=0)
+    parser.add_argument("--cuda_id", type=int, default=3)
     return parser.parse_args()
     
 
