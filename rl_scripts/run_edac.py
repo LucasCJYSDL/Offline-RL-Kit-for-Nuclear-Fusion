@@ -28,10 +28,10 @@ def get_args():
     parser.add_argument("--auto-alpha", type=bool, default=True)
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
-    parser.add_argument("--num-critics", type=int, default=10)#50
+    parser.add_argument("--num-critics", type=int, default=50)#50
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=False)
-    parser.add_argument("--eta", type=float, default=2.0)#0.5
+    parser.add_argument("--eta", type=float, default=5.0)#0.5
     parser.add_argument("--normalize-reward", type=bool, default=False)
 
     parser.add_argument("--epoch", type=int, default=1000)
@@ -41,9 +41,9 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="dens") # one of [rotation, dens, temp]
+    parser.add_argument("--task", type=str, default="temp") # one of [rotation, dens, temp]
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=9)
+    parser.add_argument("--cuda_id", type=int, default=6)
 
     parser.add_argument("--early-stop", action="store_true")
     parser.add_argument("--early-stop-patience", type=int, default=50)

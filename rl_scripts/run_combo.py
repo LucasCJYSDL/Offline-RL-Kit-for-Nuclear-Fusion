@@ -48,7 +48,7 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
 
-    parser.add_argument("--cql-weight", type=float, default=3)#5
+    parser.add_argument("--cql-weight", type=float, default=10)#5
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=True)
@@ -77,9 +77,9 @@ def get_args():
 
     # Environment settings
     parser.add_argument("--env", type=str, default="profile_control_new")
-    parser.add_argument("--task", type=str, default="dens")
+    parser.add_argument("--task", type=str, default="temp")
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=0)
+    parser.add_argument("--cuda_id", type=int, default=8)
 
     return parser.parse_args()
 

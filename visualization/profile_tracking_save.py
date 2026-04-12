@@ -13,14 +13,14 @@ from rl_preparation.get_rl_data_envs import get_rl_data_envs
 # from visualization.controller import Controller
 from visualization.controller_new import Controller
 from visualization.plotter import make_paper_quality_prof_fig, plot_actions, plot_tracking_quantities_prof
-from  envs.utils.profile_util import reconstruct_profile_from_state
-
+from envs.utils.profile_util import reconstruct_profile_from_state
+# from rl_preparation.state_actuator_spaces import acts_in_use
 #!!! what you need to specify
 def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/export/pgs/fuyang/result_45",
+                       default="/export/pgs/fuyang/result_411",
                        help="Base directory for saving all results")
     # parser.add_argument("--save_base_dir", type=str, 
     #                    default="/home/scratch/jiayuc2/bao/Eval_optuna/rotation",
@@ -28,23 +28,23 @@ def get_args():
     
     # basic settings
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
-    parser.add_argument("--cuda_id", type=int, default=6, help="CUDA device ID")
-    parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
+    parser.add_argument("--cuda_id", type=int, default=8, help="CUDA device ID")
+    parser.add_argument("--plot_actuators", type=bool, default=False, help="Whether to plot actuators")
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control_new")#profile_control  profile_control_new
-    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="temp", help="Targets to track") 
     parser.add_argument("--test", action="store_true", help="Use test split instead of validation split")
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
     # parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/rl_out_optimized_296/prof_tracking_q_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized/policy")
-    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/rot/ppo&clip_range=0.148&total_timesteps=800000&learning_rate=0.003&gae_lambda=0.98&gamma=0.952&batch_size=2048&n_steps=2048/seed_1&timestamp_26-0329-215953")
+    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/temp/td3bc&alpha=1.5/seed_1&timestamp_26-0410-191007")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
-    parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[500,500], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--stochastic_actor", type=bool, default=False, help="Is this a stochatic actor?")
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
-    parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL)")
+    parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL/PPO)")
     parser.add_argument("--dropout_rate", type=float, default=None, help="Dropout rate for actor backbone (e.g. 0.1 for MCQ)")
     return parser.parse_args()
 
@@ -375,11 +375,12 @@ def run(args=get_args()) -> None:
             'episode_length': episode_length,
             'mse_reconstruct': mse_reconstruct 
         }
-        
+        acts_in_use= ['pinj','tinj', 'gasA','ech_pwr_total']
+
         # make plots
         # plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
         # plot_tracking_quantities_prof(time_array,  reconstruct_target_quan_array, real_quan_array, reconstruct_cur_quan_array, args.task, shot, log_folder)
-        make_paper_quality_prof_fig(times,reconstruct_target_quan_array, reconstruct_cur_quan_array, args.task, shot, log_folder)
+        make_paper_quality_prof_fig(times,reconstruct_target_quan_array, reconstruct_cur_quan_array,cur_act_array, args.task, shot, log_folder, env.info, acts_in_use)
         if args.plot_actuators:
             plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
 

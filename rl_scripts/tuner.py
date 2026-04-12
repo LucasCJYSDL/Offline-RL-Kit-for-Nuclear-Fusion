@@ -266,11 +266,11 @@ def get_tuning_args():
     # Environment settings
     parser.add_argument("--env", type=str, default="profile_control_new",
                        help="Environment name")
-    parser.add_argument("--task", type=str, default="rot",
+    parser.add_argument("--task", type=str, default="temp",
                        help="Task name")
     parser.add_argument("--cuda-id", type=int, default=7,
                        help="Default CUDA device ID (used if --gpu-ids not specified)")
-    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[1, 4, 2, 8, 9],
+    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[0, 4, 2, 6, 7],
                        help="List of GPU IDs to use for parallel trials (e.g., --gpu-ids 0 1 2 3)")
     parser.add_argument("--seed", type=int, default=1,
                        help="Base random seed")
@@ -280,7 +280,7 @@ def get_tuning_args():
                        help="Number of optimization trials")
     parser.add_argument("--study-name", type=str, default=None,
                        help="Optuna study name (default: {algo}_optimization)")
-    parser.add_argument("--storage", type=str, default="sqlite:////export/pgs/fuyang/tune/optuna_study_rot.db",
+    parser.add_argument("--storage", type=str, default="sqlite:////export/pgs/fuyang/tune/optuna_study_temper.db",
                        help="Optuna storage URL for distributed optimization")
     parser.add_argument("--output-dir", type=str, default="/export/pgs/fuyang/tune",
                        help="Directory to save optimization results")

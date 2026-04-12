@@ -33,9 +33,9 @@ def get_args():
     parser.add_argument("--tau", type=float, default=0.005)
     parser.add_argument("--exploration-noise", type=float, default=0.1)
     parser.add_argument("--policy-noise", type=float, default=0.2)
-    parser.add_argument("--noise-clip", type=float, default=0.5)
+    parser.add_argument("--noise-clip", type=float, default=0.25)
     parser.add_argument("--update-actor-freq", type=int, default=2)
-    parser.add_argument("--alpha", type=float, default=1.0)
+    parser.add_argument("--alpha", type=float, default=1.5)
     parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
@@ -43,7 +43,7 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="dens")
+    parser.add_argument("--task", type=str, default="temp")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=4)
    
