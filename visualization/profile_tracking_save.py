@@ -28,7 +28,7 @@ def get_args():
     
     # basic settings
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
-    parser.add_argument("--cuda_id", type=int, default=8, help="CUDA device ID")
+    parser.add_argument("--cuda_id", type=int, default=5, help="CUDA device ID")
     parser.add_argument("--plot_actuators", type=bool, default=False, help="Whether to plot actuators")
 
     # env settings
@@ -39,10 +39,10 @@ def get_args():
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
     # parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/rl_out_optimized_296/prof_tracking_q_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized/policy")
-    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/temp/td3bc&alpha=1.5/seed_1&timestamp_26-0410-191007")
+    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/temp/combo&cql_weight=10&rollout_length=7/seed_1&timestamp_26-0410-225124")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
-    parser.add_argument("--stochastic_actor", type=bool, default=False, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256, 256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
     parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL/PPO)")
     parser.add_argument("--dropout_rate", type=float, default=None, help="Dropout rate for actor backbone (e.g. 0.1 for MCQ)")
@@ -269,6 +269,26 @@ def save_shot_data(shot_data_dict, save_folder, task_name, actor_info):
     return npz_file, metadata_file
 
 
+def extract_algorithm_name(actor_path: str) -> str:
+    """
+    Extract a compact algorithm name from an actor checkpoint path.
+
+    Examples:
+        /.../combo&cql_weight=10&rollout_length=7/seed_1&timestamp_xxx -> combo
+        /.../ppo_prof_control_zipfit_dens_optimized/policy -> ppo_prof_control_zipfit_dens_optimized
+    """
+    normalized_path = os.path.normpath(actor_path)
+    leaf_name = os.path.basename(normalized_path)
+    parent_name = os.path.basename(os.path.dirname(normalized_path))
+
+    if leaf_name.startswith("seed_") or leaf_name in {"policy", "actor", "model", "checkpoint"}:
+        candidate = parent_name
+    else:
+        candidate = leaf_name
+
+    return candidate.split("&", 1)[0].upper()
+
+
 def run(args=get_args()) -> None:
     # register an env
     args.device = torch.device("cuda".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
@@ -305,6 +325,7 @@ def run(args=get_args()) -> None:
     quan_names, act_names = sa_processor.get_plot_names() # name of the quantities to track and actuators in control
     
     actor_info = args.actor_path.split('/') # create a folder to store the visualization results
+    algo_name = extract_algorithm_name(args.actor_path)
     split_name = "val" if not args.test else "test"
     log_folder = os.path.join(args.save_base_dir, actor_info[-2], args.task, split_name, "results", actor_info[-1], str(args.seed))
     os.makedirs(log_folder, exist_ok=True)
@@ -380,7 +401,18 @@ def run(args=get_args()) -> None:
         # make plots
         # plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
         # plot_tracking_quantities_prof(time_array,  reconstruct_target_quan_array, real_quan_array, reconstruct_cur_quan_array, args.task, shot, log_folder)
-        make_paper_quality_prof_fig(times,reconstruct_target_quan_array, reconstruct_cur_quan_array,cur_act_array, args.task, shot, log_folder, env.info, acts_in_use)
+        make_paper_quality_prof_fig(
+            times,
+            reconstruct_target_quan_array,
+            reconstruct_cur_quan_array,
+            cur_act_array,
+            args.task,
+            algo_name,
+            shot,
+            log_folder,
+            env.info,
+            acts_in_use,
+        )
         if args.plot_actuators:
             plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
 

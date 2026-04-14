@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("--num-critics", type=int, default=50)#50
     parser.add_argument("--max-q-backup", type=bool, default=False)
     parser.add_argument("--deterministic-backup", type=bool, default=False)
-    parser.add_argument("--eta", type=float, default=5.0)#0.5
+    parser.add_argument("--eta", type=float, default=2.0)#0.5
     parser.add_argument("--normalize-reward", type=bool, default=False)
 
     parser.add_argument("--epoch", type=int, default=1000)
