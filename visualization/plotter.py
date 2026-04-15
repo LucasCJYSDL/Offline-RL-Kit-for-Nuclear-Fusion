@@ -60,84 +60,108 @@ def plot_actions(time_array, real_act_array, cur_act_array, act_names, shot_id, 
     plt.savefig(save_path)
     plt.close(fig)
 
-def plot_tracking_quantities_prof(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot_id, log_folder):
+def plot_tracking_quantities_prof(
+    time_array,
+    target_quan_array,
+    real_quan_array,
+    cur_quan_array,
+    quan_names,
+    algo_name,
+    shot_id,
+    log_folder,
+    snapshot_times=None,
+):
     """
-    Plot tracking quantities with physical units displayed on axes
-    
+    Plot six profile snapshots across time.
+
     Args:
         time_array: Array of time steps
-        target_quan_array: Target quantity values (denormalized)
-        real_quan_array: Real quantity values (denormalized) 
-        cur_quan_array: Current quantity values from RL agent (denormalized)
-        quan_names: List of quantity names
+        target_quan_array: Target profile values (time, radius)
+        real_quan_array: Real profile values (time, radius)
+        cur_quan_array: Current profile values from RL agent (time, radius)
+        quan_names: Quantity name
         shot_id: Shot identifier
         log_folder: Directory to save the plot
+        snapshot_times: Optional list of time values to plot. If omitted,
+            six evenly spaced times are selected automatically.
     """
     all_titles = {
-        "rotation":['Rotation (km/s)'],
+        "rotation": ['Rotation (km/s)'],
         "pinj": ['Power Injected (kW)'],
         "tinj": ['Torque Injected (Nm)'],
-        "ech_pwr_total":[ 'ECH Power (W)'],
-        "dstdenp":[ 'Density (10^19)'],
-        'gasA':[ 'Gas A (Voltage)'],
+        "ech_pwr_total": ['ECH Power (W)'],
+        "dstdenp": ['Density (10^19)'],
+        'gasA': ['Gas A (Voltage)'],
         'dens': ['Density'],
         'temp': ['Temperature'],
         'pres_EFIT01': ['Pressure'],
         "q_EFIT01": ['q'],
     }
-    n = len([quan_names])
-    rows = (n + 1) // 2  # Calculate rows needed for 2 subplots per row
-    fig, axes = plt.subplots(rows, 1, figsize=(12, 5 * rows), sharex=True, sharey=False)
-    quan_names = [quan_names]
-    # Handle single subplot case
-    if n == 1:
-        axes = [axes] if rows == 1 else axes.flatten()
+
+    quan_name = quan_names[0] if isinstance(quan_names, (list, tuple)) else quan_names
+    profile_title = all_titles.get(quan_name, [quan_name])[0]
+
+    time_array = np.asarray(time_array).flatten()
+    target_quan_array = np.asarray(target_quan_array)
+    real_quan_array = np.asarray(real_quan_array)
+    cur_quan_array = np.asarray(cur_quan_array)
+
+    max_t = min(len(time_array), target_quan_array.shape[0], cur_quan_array.shape[0])
+    if max_t <= 0:
+        raise ValueError("time_array and profile arrays must contain at least one timestep")
+
+    if snapshot_times is None:
+        snapshot_indices = np.linspace(0, max_t - 1, min(6, max_t), dtype=int)
     else:
-        axes = axes.flatten()
-    
-    tidx = len(time_array)-1
-    for i in range(n):
-        quan_name = quan_names[i]
+        snapshot_times = np.asarray(snapshot_times).flatten()
+        snapshot_indices = np.array([
+            int(np.argmin(np.abs(time_array[:max_t] - t)))
+            for t in snapshot_times
+        ], dtype=int)
+
+    snapshot_indices = list(dict.fromkeys(snapshot_indices.tolist()))
+
+    fig, axes = plt.subplots(2, 3, figsize=(15, 9), sharex=True, sharey=True)
+    axes = axes.flatten()
+    rho = np.linspace(0.0, 1.0, target_quan_array.shape[1])
+
+    for i, tidx in enumerate(snapshot_indices[:6]):
+        ax = axes[i]
         if quan_name == 'q_EFIT01':
-            axes[i].plot(1/real_quan_array[tidx], ls='--', color='black', label='True')
-            axes[i].plot(1/target_quan_array[tidx], ls='-', color='green', label='Target')
-            axes[i].plot(1/cur_quan_array[tidx], color='red', label='RL')
-            axes[i].plot(1/cur_quan_array[tidx, :].T, color='red', alpha=0.1)
-            axes[i].set_ylim([0.75, 6])
-            axes[i].set_title('q')
-            axes[i].set_xlabel('Normalized Radius')
-            axes[i].legend()
-            axes[i].grid()
+            present = 1.0 / cur_quan_array[tidx]
+            target = 1.0 / target_quan_array[tidx]
         else:
-            axes[i].plot(target_quan_array[tidx], ls='-', color='green', label='Target')
-            axes[i].plot(cur_quan_array[tidx], color='red', label='RL')
-            axes[i].plot( cur_quan_array[tidx, :].T, color='red', alpha=0.1)
+            present = cur_quan_array[tidx]
+            target = target_quan_array[tidx]
 
-            # axes[i].set_ylim(limits[pname])
-            axes[i].set_title(all_titles[quan_name][0])
-            x_values = np.linspace(0.0, len(target_quan_array[tidx]), 7)
-            new_x_values = np.linspace(0.0, 1, 7)
-            axes[i].set_xticks(x_values)
-            axes[i].set_xticklabels([f"{label:.2f}" for label in new_x_values])
-            axes[i].set_xlabel('Normalized Radius')
-            axes[i].legend()
-            axes[i].grid()
-       
+        ax.plot(rho, present, color='steelblue', linewidth=1.6, label='Present')
+        ax.plot(rho, target, color='indianred', linestyle='--', linewidth=1.6, label='Target')
+        ax.set_title(f"t = {int(time_array[tidx])} ms", fontsize=14)
+        ax.set_xlabel(r'$\psi_n$')
+        ax.set_ylabel(profile_title)
+        ax.grid(alpha=0.25)
+        ax.set_xlim(0.0, 1.0)
+        xticks = np.linspace(0.0, 1.0, 6)
+        ax.set_xticks(xticks)
+        ax.set_xticklabels([f"{x:.1f}" for x in xticks])
 
-    # Remove unused subplots
-    for j in range(n, len(axes)):
+    for j in range(len(snapshot_indices), len(axes)):
         fig.delaxes(axes[j])
 
-    plt.suptitle(f'Shot #{shot_id} - Physical Quantities Tracking (with Units)', 
-                 fontsize=18, fontweight='bold')
-    plt.tight_layout()
-    
-    # Save the figure with high resolution
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', ncol=2, frameon=True, fontsize=13)
+
+    plt.suptitle(
+        f'Shot {shot_id} {algo_name} {profile_title} Snapshots',
+        fontsize=18,
+        fontweight='bold'
+    )
+    fig.subplots_adjust(top=0.90, bottom=0.12, left=0.07, right=0.98, wspace=0.22, hspace=0.32)
+
     save_path = os.path.join(log_folder, f"{shot_id}_tracking_quantities_with_units.png")
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close(fig)
-    
-    print(f"Saved tracking plot with units: {save_path}")
+
 
 def plot_actions_prof(time_array, real_act_array, cur_act_array, act_names, shot_id, log_folder):
     """

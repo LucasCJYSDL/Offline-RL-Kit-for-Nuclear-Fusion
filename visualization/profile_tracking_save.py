@@ -400,7 +400,7 @@ def run(args=get_args()) -> None:
 
         # make plots
         # plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
-        # plot_tracking_quantities_prof(time_array,  reconstruct_target_quan_array, real_quan_array, reconstruct_cur_quan_array, args.task, shot, log_folder)
+        plot_tracking_quantities_prof(times,  reconstruct_target_quan_array, real_quan_array, reconstruct_cur_quan_array, args.task, algo_name,shot, log_folder)
         make_paper_quality_prof_fig(
             times,
             reconstruct_target_quan_array,

@@ -21,8 +21,8 @@ BACKUP = 60
 
 DEFAULT_X_NAME = "timestep"
 # ROOT_DIR = "log"
-# ROOT_DIR = "/export/pgs/fuyang/tune/log_tune"
-ROOT_DIR = "/export/pgs/fuyang/log_syn"
+ROOT_DIR = "/export/pgs/fuyang/tune/log_tune"
+# ROOT_DIR = "/export/pgs/fuyang/log_syn"
 
 class KVWriter(object):
     """
