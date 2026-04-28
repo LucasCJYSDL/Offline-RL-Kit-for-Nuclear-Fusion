@@ -1,14 +1,10 @@
 import argparse
 import random
 import os
-import sys
 import time
 import numpy as np
 import torch
 import gymnasium as gym
-
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.callbacks import CallbackList
@@ -18,6 +14,7 @@ from offlinerlkit.policy.model_free.ppo import PPOPolicy
 from offlinerlkit.callbacks.ConvertAndSaveCallback import ConvertAndSaveCallback
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.callbacks.BestModelConvertCallback import BestModelConvertCallback
+import rl_preparation as rp
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from offlinerlkit.callbacks import TensorBoardLoggingCallback, FusionSpecificCallback, TrainingProgressCallback
 from envs.env_wrappers import GymnasiumWrapper
@@ -63,7 +60,7 @@ def get_args():
     parser.add_argument("--max_start_idx",  type=int, default=20)
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="temp") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="temp", help=rp.TASK_ARG_HELP)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=3)
     return parser.parse_args()
@@ -77,6 +74,7 @@ def train(args=None):
     # Convert attribute names with hyphens to underscores for consistency
     # This handles the case where args come from command line (with hyphens)
     args = normalize_args(args)
+    args.task = rp.resolve_task_name(args.task)
 
     args.device = torch.device(f"cuda:{args.cuda_id}" if torch.cuda.is_available() else "cpu")
     print(f"Use device: {args.device}")
@@ -295,5 +293,9 @@ def train(args=None):
     print("# training complete!")
 
 
-if __name__ == "__main__":
+def main():
     train()
+
+
+if __name__ == "__main__":
+    main()

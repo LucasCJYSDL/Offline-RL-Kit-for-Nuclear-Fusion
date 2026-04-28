@@ -6,21 +6,7 @@ from typing import Dict, Sequence, List, Tuple, Optional
 from  envs.utils.profile_util import reconstruct_profile_from_state
 
 from envs.base_env import NFBaseEnv
-from rl_preparation.state_actuator_spaces import ( 
-    acts_in_use, 
-    action_space,
-    computed_obs_in_use,
-    discrete_k_target_idx_in_obs,
-    k_step_targets_in_obs,
-    add_tm_probs_to_obs,
-    targets_in_obs,
-    track_signals,
-    actuator_bounder,
-    reward_function,
-    target_lows,
-    target_highs,
-    horizon
-)
+from rl_preparation import state_actuator_spaces as sas
 from rl_preparation.process_raw_data import raw_data_dir
 
 class SA_processor:  
@@ -85,19 +71,21 @@ class SA_processor:
         # get names of the tracking quantities and actuators in control
         self.tracking_target_names = offline_data['tracking_target_names']
         self.action_names = offline_data['action_names']
-        self.track_signals = track_signals
-        self.targets_in_obs = targets_in_obs
-        self.add_tm_probs_to_obs = add_tm_probs_to_obs
-        self.actuator_bounders = actuator_bounder
-        self.reward_function = reward_function
+        self.track_signals = sas.track_signals
+        self.targets_in_obs = sas.targets_in_obs
+        self.add_tm_probs_to_obs = sas.add_tm_probs_to_obs
+        self.actuator_bounders = sas.actuator_bounder
+        self.reward_function = sas.reward_function
+        self.target_lows = sas.target_lows
+        self.target_highs = sas.target_highs
 
         self.obs_noise = 0.
-        self.k_step_targets_in_obs = k_step_targets_in_obs
-        self.discrete_k_target_idx_in_obs = discrete_k_target_idx_in_obs
-        if computed_obs_in_use is None:
+        self.k_step_targets_in_obs = sas.k_step_targets_in_obs
+        self.discrete_k_target_idx_in_obs = sas.discrete_k_target_idx_in_obs
+        if sas.computed_obs_in_use is None or len(sas.computed_obs_in_use) == 0:
             self.computed_observations = []
         else:
-            self.computed_observations = computed_obs_in_use
+            self.computed_observations = list(sas.computed_obs_in_use)
             print(f'Using {len(self.computed_observations)} computed observations.')
         
         with open(raw_data_dir + '/info.pkl', 'rb') as file:
@@ -345,11 +333,19 @@ class FusionEnv(NFBaseEnv):  # env for evaluation
         self.tracking_states, self.tracking_pre_actions, self.tracking_actions = None, None, None
         self.eval_shot_list = list(tracking_data.keys())
         self.tracking_data = tracking_data
-        self.add_tm_probs_to_obs = add_tm_probs_to_obs
-        self.k_step_targets_in_obs = k_step_targets_in_obs
-        self.targets_in_obs = targets_in_obs
+        self.add_tm_probs_to_obs = sas.add_tm_probs_to_obs
+        self.k_step_targets_in_obs = sas.k_step_targets_in_obs
+        self.targets_in_obs = sas.targets_in_obs
         self.reward_delay = 0  # no delay in reward
-        self.reward_function = reward_function
+        self.reward_function = sas.reward_function
+        self.track_signals = sas.track_signals
+        self.actuator_bounders = sas.actuator_bounder
+        self.target_lows = sas.target_lows
+        self.target_highs = sas.target_highs
+        if sas.computed_obs_in_use is None or len(sas.computed_obs_in_use) == 0:
+            self.computed_observations = []
+        else:
+            self.computed_observations = list(sas.computed_obs_in_use)
         
         with open(raw_data_dir + '/info.pkl', 'rb') as file:
           self.info = pickle.load(file)
@@ -375,7 +371,7 @@ class FusionEnv(NFBaseEnv):  # env for evaluation
         self.tracking_actions = self.tracking_data[self.ref_shot_id]['tracking_actions'][1:].copy()
         self.tracking_next_actuator = self.tracking_data[self.ref_shot_id]['tracking_actions'] -  self.tracking_data[self.ref_shot_id]['tracking_pre_actions']
         #self.cur_shot_time_limit = self.tracking_states.shape[0]
-        self.cur_shot_time_limit =  150
+        self.cur_shot_time_limit = sas.horizon
 
         # randomly sample an initial time step
         # self.cur_time = random.randint(0, 9) # TODO
@@ -495,5 +491,3 @@ class FusionEnv(NFBaseEnv):  # env for evaluation
                                               self.targets[:self.cur_time + 1 + self.k_step_targets_in_obs-1] if self.targets_in_obs else None,
                                               self.cur_time, 
                                               shot_id=self.ref_shot_id, tm_probs=self.tm_probs[:self.cur_time, np.newaxis] if self.add_tm_probs_to_obs else None),self.tracking_pre_actions.copy() , self.reward_return, done, {'means': means, 'stds': stds, "time_step": self.cur_time}
-
-

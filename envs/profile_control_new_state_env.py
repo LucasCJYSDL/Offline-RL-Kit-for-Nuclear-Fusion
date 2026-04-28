@@ -4,19 +4,7 @@ import numpy as np
 import pickle
 from envs.base_env import NFBaseEnv
 from rl_preparation.process_raw_data import raw_data_dir
-from rl_preparation.state_actuator_spaces import ( 
-    reward_function,
-    computed_obs_in_use,
-    discrete_k_target_idx_in_obs,
-    k_step_targets_in_obs,
-    add_tm_probs_to_obs,
-    targets_in_obs,
-    track_signals,
-    actuator_bounder,
-    reward_function,
-    target_lows,
-    target_highs,
-)
+from rl_preparation import state_actuator_spaces as sas
 
 class SA_processor: # used for both training and evaluation
     def __init__(self, offline_data, tracking_data, device):
@@ -28,13 +16,20 @@ class SA_processor: # used for both training and evaluation
         self.np_range = ((bounds[1] - bounds[0]) / 2.0)[np.newaxis, :]
         self.np_mid = ((bounds[1] + bounds[0]) / 2.0)[np.newaxis, :]
 
-        self.k_step_targets_in_obs = k_step_targets_in_obs
-        self.discrete_k_target_idx_in_obs = discrete_k_target_idx_in_obs
-        if computed_obs_in_use is None:
+        self.k_step_targets_in_obs = sas.k_step_targets_in_obs
+        self.discrete_k_target_idx_in_obs = sas.discrete_k_target_idx_in_obs
+        if sas.computed_obs_in_use is None or len(sas.computed_obs_in_use) == 0:
             self.computed_observations = []
         else:
-            self.computed_observations = computed_obs_in_use
+            self.computed_observations = list(sas.computed_obs_in_use)
             print(f'Using {len(self.computed_observations)} computed observations.')
+        self.track_signals = sas.track_signals
+        self.targets_in_obs = sas.targets_in_obs
+        self.add_tm_probs_to_obs = sas.add_tm_probs_to_obs
+        self.actuator_bounders = sas.actuator_bounder
+        self.reward_function = sas.reward_function
+        self.target_lows = sas.target_lows
+        self.target_highs = sas.target_highs
 
         with open(raw_data_dir + '/info.pkl', 'rb') as file:
           self.info = pickle.load(file)
@@ -214,7 +209,7 @@ class SA_processor: # used for both training and evaluation
         else:
             #boundary checkout
             targets = self.training_tracking_targets[idx] # for training
-        reward = reward_function.get_reward(next_state[:, self.idx_list],None,self.info,self.idx_list,targets)
+        reward = self.reward_function.get_reward(next_state[:, self.idx_list], None, self.info, self.idx_list, targets)
         return reward
         # this design is flexible - we are using "-mse" as the reaward
         #return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 

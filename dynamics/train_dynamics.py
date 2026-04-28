@@ -1,5 +1,4 @@
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 os.environ["HYDRA_FULL_ERROR"] = "1"
 
 import warnings
@@ -8,6 +7,7 @@ warnings.filterwarnings("ignore")
 import ray, time
 import hydra, pickle
 import numpy as np
+from offlinerlkit.paths import dynamics_root
 from dynamics.utils import get_EYX, get_t_confidence_interval, get_B_star
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning.utilities.seed import seed_everything
@@ -16,7 +16,7 @@ from dynamics_toolbox.utils.lightning.constructors import construct_all_pl_compo
 
 @ray.remote(num_gpus=1)  # Request 1/6 of a GPU
 def train_single_model(cfg: DictConfig, ensemble_id: int, exp_id: int, B_star: int, num_models_so_far: int):
-    save_dir = os.path.join(os.getcwd(), "exp_{}".format(exp_id)) # DANGER: could take a lot of disk space.
+    save_dir = os.path.join(str(dynamics_root), "exp_{}".format(exp_id)) # DANGER: could take a lot of disk space.
     # Clone the config for this ensemble member
     cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
     with open_dict(cfg):
@@ -28,6 +28,7 @@ def train_single_model(cfg: DictConfig, ensemble_id: int, exp_id: int, B_star: i
         # cfg["data_module"]["seed"] = cfg["seed"] # TODO
         cfg["data_module"]["save_dir"] = os.path.join(save_dir, str(cfg["seed"])) # save_dir for data
         cfg["save_dir"] = os.path.join(save_dir, str(cfg["seed"]), "model") # save_dir for model
+        cfg["save_path"] = os.path.join(str(dynamics_root), cfg.get("experiment_name", f"exp_{exp_id}"))
 
     # you should either comment the following line or assign random seeds (i.e., cfg["seed"]) based on the exp_id
     # to ensure that the training result of each exp is different

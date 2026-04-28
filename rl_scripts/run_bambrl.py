@@ -5,8 +5,8 @@ import torch
 from tqdm import tqdm
 
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from offlinerlkit.paths import tune_root
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian, EnsembleDynamicsModel
 from offlinerlkit.dynamics import BayesEnsembleDynamics
@@ -14,9 +14,11 @@ from offlinerlkit.utils.scheduler import LinearParameter
 from offlinerlkit.buffer import BayesReplayBuffer, SLReplayBuffer
 #from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.utils.logger import Logger, make_log_dirs_new
+from rl_scripts.config_utils import resolve_algo_defaults
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import BAMBRLPolicy
 from offlinerlkit.utils.searcher import Searcher
+import rl_preparation as rp
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 
 
@@ -71,17 +73,19 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation") #?
+    parser.add_argument("--task", type=str, default="rotation", help=rp.TASK_ARG_HELP)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--search_with_hidden_state", type=bool, default=False) # when you do MCTS, whether to use the hidden state of the rpnn dynamics model; time-costly if true
     parser.add_argument("--cuda_id", type=int, default=0)
 
-    parser.add_argument("--base-dir", type=str, default="/zfsauton2/home/jiayuc2/bao/synthesize_test_all/log")
+    parser.add_argument("--base-dir", type=str, default=str(tune_root))
+    resolve_algo_defaults(parser, os.path.join(os.path.dirname(__file__), "algo_config_bao.json"), "bambrl")
 
     return parser.parse_args()
 
 
 def train(args=get_args()):    
+    args.task = rp.resolve_task_name(args.task)
     if args.use_search:
         args.algo_name += '_mcts'
     if args.use_sl:

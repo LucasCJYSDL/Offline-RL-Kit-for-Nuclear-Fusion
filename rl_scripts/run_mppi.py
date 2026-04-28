@@ -9,8 +9,6 @@ import torch
 import h5py
 import numpy as np
 
-import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 #from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.utils.logger import Logger, make_log_dirs_new

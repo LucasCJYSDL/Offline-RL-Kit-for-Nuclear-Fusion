@@ -3,6 +3,7 @@ import random
 import numpy as np
 import pickle
 from envs.base_env import NFBaseEnv
+from rl_preparation import state_actuator_spaces as sas
 from rl_preparation.process_raw_data import raw_data_dir
 
 
@@ -13,6 +14,7 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         self.ref_shot_id = None
         self.tracking_states, self.tracking_pre_actions, self.tracking_actions = None, None, None
         self.eval_shot_list = list(tracking_data.keys())
+        assert len(self.eval_shot_list) > 0, "tracking_data must contain at least one shot for evaluation"
         self.tracking_data = tracking_data
           
         with open(raw_data_dir + '/info.pkl', 'rb') as file:
@@ -22,7 +24,7 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         """
         return the list of shots for evaluation
         """
-        return self.eval_shot_list
+        return list(self.eval_shot_list)
 
     def reset(self, shot_id=None):
         # randomly sample a shot for evaluation
@@ -35,7 +37,7 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
                                                                                  self.tracking_data[self.ref_shot_id]['tracking_pre_actions'], \
                                                                                  self.tracking_data[self.ref_shot_id]['tracking_actions']
         #self.cur_shot_time_limit = self.tracking_states.shape[0]
-        self.cur_shot_time_limit = 150
+        self.cur_shot_time_limit = sas.horizon
         
         # randomly sample an initial time step
         # self.cur_time = random.randint(0, 9) # TODO

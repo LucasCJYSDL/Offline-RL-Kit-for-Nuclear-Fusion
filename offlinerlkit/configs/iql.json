@@ -1,0 +1,22 @@
+{
+  "algo_name": "iql",
+  "train_module": "run_iql",
+  "default_params": {
+    "algo_name": "iql",
+    "hidden_dims": [
+      256,
+      256
+    ],
+    "actor_lr": 0.0003,
+    "critic_q_lr": 0.0003,
+    "critic_v_lr": 0.0003,
+    "dropout_rate": null,
+    "lr_decay": true,
+    "gamma": 0.99,
+    "tau": 0.005,
+    "epoch": 1000,
+    "step_per_epoch": 1000,
+    "eval_episodes": 5,
+    "batch_size": 256
+  }
+}

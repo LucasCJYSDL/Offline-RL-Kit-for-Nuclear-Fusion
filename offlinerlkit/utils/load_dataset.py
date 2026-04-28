@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import collections
@@ -5,11 +6,20 @@ from dynamics_toolbox.utils.storage.qdata import load_from_hdf5
 from gym import spaces
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from offlinerlkit.paths import REPO_ROOT
 
-#data_path = "/home/scratch/avenugo2/FusionControl/data/preprocessed/wshapecontrol"
-data_path = "/home/scratch/avenugo2/FusionControl/data/preprocessed/noshape_ech"
-req_shots_path = "/home/scratch/avenugo2/FusionControl/data/tm_shots.txt"
-tm_labels_path = "/home/scratch/avenugo2/FusionControl/data/tm_labels"
+data_path = os.getenv(
+    "OFFLINERLKIT_PREPROCESSED_DATA_DIR",
+    str(REPO_ROOT / "data" / "preprocessed" / "noshape_ech"),
+)
+req_shots_path = os.getenv(
+    "OFFLINERLKIT_REQUIRED_SHOTS_PATH",
+    str(REPO_ROOT / "data" / "tm_shots.txt"),
+)
+tm_labels_path = os.getenv(
+    "OFFLINERLKIT_TM_LABELS_PATH",
+    str(REPO_ROOT / "data" / "tm_labels"),
+)
 
 def max_pooling(arr, target_size):
 

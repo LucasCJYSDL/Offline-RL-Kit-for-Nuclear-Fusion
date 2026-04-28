@@ -1,134 +1,12 @@
-import pickle
 import os
-import sys
+import pickle
 
 import numpy as np
-repo_root = os.path.expanduser("/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit-for-Nuclear-Fusion")
-sys.path.append(repo_root)
 from envs.utils.observation_calculators import PTerm, ITermCalculator, SimpleDTerm
 from envs.utils.actuator_bounding.beam_bounder import D3dTotalPowerTorqueBounding
 from envs.utils.actuator_bounding.actuator_bounder import CompositeActuatorBounder
 from envs.utils.rewards import ProfileTrackingReward, TrackingReward, ProfileTrackingWithBetanReward
 
-# need to modify
-track_signals = [
-            #   "rotation_component1", 
-            #   "rotation_component2", 
-            #   "rotation_component3", 
-            #   "rotation_component4",
-            #   "dens_component1", 
-            #   "dens_component2", 
-            #   "dens_component3", 
-            #   "dens_component4",
-            "temp_component1",
-            "temp_component2",
-            "temp_component3",
-            "temp_component4",
-            # "betan_EFIT01"
-            # "pres_EFIT01_component1",
-            # "pres_EFIT01_component2",
-            # "q_EFIT01_component1",
-            # "q_EFIT01_component2"
-            ]
-#!!! what you need to specify
-# which states/actuators are actually used
-# betan task
-# obs_in_use = ["betan_EFIT01",
-#                 "temp_component1", 
-#                 "temp_component2", 
-#                 "temp_component3", 
-#                 "temp_component4", 
-#                 "itemp_component1", 
-#                 "itemp_component2", 
-#                 "itemp_component3", 
-#                 "itemp_component4", 
-#                 "dens_component1", 
-#                 "dens_component2", 
-#                 "dens_component3", 
-#                 "dens_component4", 
-#                 "rotation_component1", 
-#                 "rotation_component2", 
-#                 "rotation_component3", 
-#                 "rotation_component4", 
-#                 "pres_EFIT01_component1", 
-#                 "pres_EFIT01_component2", 
-#                 "q_EFIT01_component1", 
-#                 "q_EFIT01_component2"]
-#rotation task
-# obs_in_use = ["rotation_component1", 
-#               "rotation_component2", 
-#               "rotation_component3", 
-#               "rotation_component4"]
-# dens task
-# obs_in_use=[ "dens_component1", 
-#                  "dens_component2", 
-#                  "dens_component3", 
-#                  "dens_component4" ]
-
-# temperature task
-obs_in_use=[  "temp_component1",
-            "temp_component2",
-            "temp_component3",
-            "temp_component4" ]
-
-# pres task
-# obs_in_use=[  "pres_EFIT01_component1",
-#             "pres_EFIT01_component2"]
-
-# q task
-# obs_in_use=[  "q_EFIT01_component1",
-#             "q_EFIT01_component2"]
-
-#need modify
-acts_in_use= ['pinj','tinj', 'gasA','ech_pwr_total']
-
-#acts_in_use= ['pinj','tinj']
-
-action_space = [
-    'pinj_velocity',
-    'tinj_velocity',
-    'gasA_velocity',
-    'ech_pwr_total_velocity' # when task is betan, comment out it
-    ]
-
-#need modify
-# computed_obs_in_use = [
-#     PTerm(signal_name="rotation_component1", target_idx=0),
-#     PTerm(signal_name="rotation_component2", target_idx=0),
-#     PTerm(signal_name="rotation_component3", target_idx=0),
-#     PTerm(signal_name="rotation_component4", target_idx=0),
-# ]
-
-# computed_obs_in_use = [
-#     PTerm(signal_name="dens_component1", target_idx=0),
-#     PTerm(signal_name="dens_component2", target_idx=0),
-#     PTerm(signal_name="dens_component3", target_idx=0),
-#     PTerm(signal_name="dens_component4", target_idx=0),
-# ]
-
-computed_obs_in_use = [
-    PTerm(signal_name="temp_component1", target_idx=0),
-    PTerm(signal_name="temp_component2", target_idx=0),
-    PTerm(signal_name="temp_component3", target_idx=0),
-    PTerm(signal_name="temp_component4", target_idx=0),
-]
-
-# computed_obs_in_use = [
-#     PTerm(signal_name="betan_EFIT01", target_idx=0),
-# ]
-
-
-# computed_obs_in_use = [
-#     PTerm(signal_name="pres_EFIT01_component1", target_idx=0),
-#     PTerm(signal_name="pres_EFIT01_component2", target_idx=0),
-# ]
-
-# computed_obs_in_use = [
-#     PTerm(signal_name="q_EFIT01_component1", target_idx=0),
-#     PTerm(signal_name="q_EFIT01_component2", target_idx=0),
-# ]
-
-# do not need modify
 beams = ['30L', '30R', '150L', '150R', '210L', '210R', '330L', '330R']
 
 voltages = {beam: 75000 for beam in beams}
@@ -142,19 +20,11 @@ rtans = {
 }
 
 min_duty_cycle = {
-    '30L': 0.5,   '30R': 0.0,    
+    '30L': 0.5,   '30R': 0.0,
     '150L': 0.0,  '150R': 0.0,
     '210L': 0.0,  '210R': 0.0,
-    '330L': 0.5,  '330R': 0.0,   
+    '330L': 0.5,  '330R': 0.0,
 }
-
-targets_in_obs = True
-# need to modify
-k_step_targets_in_obs = 10 
-#k_step_targets_in_obs = 1   # default 1 which is current step only. when task is betan, change to 1
-discrete_k_target_idx_in_obs = [0,9]  # None.  When task is betan, change to None
-#discrete_k_target_idx_in_obs = None
-add_tm_probs_to_obs = False
 
 beam_bounder = D3dTotalPowerTorqueBounding(
     voltages=voltages,
@@ -163,28 +33,243 @@ beam_bounder = D3dTotalPowerTorqueBounding(
     min_duty_cycle=min_duty_cycle
 )
 
-target_lows = [-0.17593358763413988] # 1.5
-target_highs= [1.0847411701303655] # 2.5
-
 actuator_bounder = CompositeActuatorBounder(bounders=[beam_bounder])
 
-# need to modify 
-# rotation and dens task
-reward_function = ProfileTrackingReward(
-        unnormalize=False,
-        profile_name=["temp"],#dens #pres_EFIT01
-        square_costs=True,
-        track_signals=track_signals,
-    )
+AVAILABLE_TASKS = ('temp', 'rotation', 'dens', 'pres', 'q', 'betan')
+DEFAULT_TASK = os.getenv('OFFLINERLKIT_TASK', 'temp')
+CURRENT_TASK = None
 
-# betan task
-# reward_function = TrackingReward(
-#     track_signals=track_signals,
-#     track_coefficients = [1],
-#     square_costs = True
-# )
 
-horizon = 150
+def _profile_obs(prefix):
+    return [f'{prefix}_component{i}' for i in range(1, 5)]
+
+
+def _profile_terms(prefix, count):
+    return [PTerm(signal_name=f'{prefix}_component{i}', target_idx=0) for i in range(1, count + 1)]
+
+
+def _normalize_task_name(task_name):
+    task_name = task_name.lower().strip()
+    if task_name in AVAILABLE_TASKS:
+        return task_name
+    if task_name.endswith('_efit01'):
+        stripped = task_name[:-len('_efit01')]
+        if stripped in AVAILABLE_TASKS:
+            return stripped
+    return task_name
+
+
+def normalize_task_name(task_name):
+    """Normalize legacy task names to the canonical registry task name."""
+    return _normalize_task_name(task_name)
+
+
+def _task_spec(task_name):
+    task_name = _normalize_task_name(task_name)
+    if task_name == 'temp':
+        obs = _profile_obs('temp')
+        track = obs[:]
+        return dict(
+            obs_in_use=obs,
+            acts_in_use=['pinj', 'tinj', 'gasA', 'ech_pwr_total'],
+            action_space=['pinj_velocity', 'tinj_velocity', 'gasA_velocity', 'ech_pwr_total_velocity'],
+            computed_obs_in_use=_profile_terms('temp', 4),
+            track_signals=track,
+            targets_in_obs=True,
+            k_step_targets_in_obs=10,
+            discrete_k_target_idx_in_obs=[0, 9],
+            add_tm_probs_to_obs=False,
+            reward_function=ProfileTrackingReward(
+                unnormalize=False,
+                profile_name=['temp'],
+                square_costs=True,
+                track_signals=track,
+            ),
+            target_lows=[-0.17593358763413988],
+            target_highs=[1.0847411701303655],
+            horizon=150,
+        )
+    if task_name == 'rotation':
+        obs = _profile_obs('rotation')
+        track = obs[:]
+        return dict(
+            obs_in_use=obs,
+            acts_in_use=['pinj', 'tinj', 'gasA', 'ech_pwr_total'],
+            action_space=['pinj_velocity', 'tinj_velocity', 'gasA_velocity', 'ech_pwr_total_velocity'],
+            computed_obs_in_use=_profile_terms('rotation', 4),
+            track_signals=track,
+            targets_in_obs=True,
+            k_step_targets_in_obs=10,
+            discrete_k_target_idx_in_obs=[0, 9],
+            add_tm_probs_to_obs=False,
+            reward_function=ProfileTrackingReward(
+                unnormalize=False,
+                profile_name=['rotation'],
+                square_costs=True,
+                track_signals=track,
+            ),
+            target_lows=[-0.17593358763413988],
+            target_highs=[1.0847411701303655],
+            horizon=150,
+        )
+    if task_name == 'dens':
+        obs = _profile_obs('dens')
+        track = obs[:]
+        return dict(
+            obs_in_use=obs,
+            acts_in_use=['pinj', 'tinj', 'gasA', 'ech_pwr_total'],
+            action_space=['pinj_velocity', 'tinj_velocity', 'gasA_velocity', 'ech_pwr_total_velocity'],
+            computed_obs_in_use=_profile_terms('dens', 4),
+            track_signals=track,
+            targets_in_obs=True,
+            k_step_targets_in_obs=10,
+            discrete_k_target_idx_in_obs=[0, 9],
+            add_tm_probs_to_obs=False,
+            reward_function=ProfileTrackingReward(
+                unnormalize=False,
+                profile_name=['dens'],
+                square_costs=True,
+                track_signals=track,
+            ),
+            target_lows=[-0.17593358763413988],
+            target_highs=[1.0847411701303655],
+            horizon=150,
+        )
+    if task_name == 'pres':
+        obs = ['pres_EFIT01_component1', 'pres_EFIT01_component2']
+        track = obs[:]
+        return dict(
+            obs_in_use=obs,
+            acts_in_use=['pinj', 'tinj', 'gasA', 'ech_pwr_total'],
+            action_space=['pinj_velocity', 'tinj_velocity', 'gasA_velocity', 'ech_pwr_total_velocity'],
+            computed_obs_in_use=[PTerm(signal_name='pres_EFIT01_component1', target_idx=0),
+                                 PTerm(signal_name='pres_EFIT01_component2', target_idx=0)],
+            track_signals=track,
+            targets_in_obs=True,
+            k_step_targets_in_obs=10,
+            discrete_k_target_idx_in_obs=[0, 9],
+            add_tm_probs_to_obs=False,
+            reward_function=ProfileTrackingReward(
+                unnormalize=False,
+                profile_name=['pres_EFIT01'],
+                square_costs=True,
+                track_signals=track,
+            ),
+            target_lows=[-0.17593358763413988],
+            target_highs=[1.0847411701303655],
+            horizon=150,
+        )
+    if task_name == 'q':
+        obs = ['q_EFIT01_component1', 'q_EFIT01_component2']
+        track = obs[:]
+        return dict(
+            obs_in_use=obs,
+            acts_in_use=['pinj', 'tinj', 'gasA', 'ech_pwr_total'],
+            action_space=['pinj_velocity', 'tinj_velocity', 'gasA_velocity', 'ech_pwr_total_velocity'],
+            computed_obs_in_use=[PTerm(signal_name='q_EFIT01_component1', target_idx=0),
+                                 PTerm(signal_name='q_EFIT01_component2', target_idx=0)],
+            track_signals=track,
+            targets_in_obs=True,
+            k_step_targets_in_obs=10,
+            discrete_k_target_idx_in_obs=[0, 9],
+            add_tm_probs_to_obs=False,
+            reward_function=ProfileTrackingReward(
+                unnormalize=False,
+                profile_name=['q_EFIT01'],
+                square_costs=True,
+                track_signals=track,
+            ),
+            target_lows=[-0.17593358763413988],
+            target_highs=[1.0847411701303655],
+            horizon=150,
+        )
+    if task_name == 'betan':
+        obs = [
+            'betan_EFIT01',
+            'temp_component1',
+            'temp_component2',
+            'temp_component3',
+            'temp_component4',
+            'itemp_component1',
+            'itemp_component2',
+            'itemp_component3',
+            'itemp_component4',
+            'dens_component1',
+            'dens_component2',
+            'dens_component3',
+            'dens_component4',
+            'rotation_component1',
+            'rotation_component2',
+            'rotation_component3',
+            'rotation_component4',
+            'pres_EFIT01_component1',
+            'pres_EFIT01_component2',
+            'q_EFIT01_component1',
+            'q_EFIT01_component2',
+        ]
+        track = ['betan_EFIT01']
+        return dict(
+            obs_in_use=obs,
+            acts_in_use=['pinj', 'tinj', 'gasA'],
+            action_space=['pinj_velocity', 'tinj_velocity', 'gasA_velocity'],
+            computed_obs_in_use=[],
+            track_signals=track,
+            targets_in_obs=True,
+            k_step_targets_in_obs=1,
+            discrete_k_target_idx_in_obs=None,
+            add_tm_probs_to_obs=False,
+            reward_function=TrackingReward(
+                track_signals=track,
+                track_coefficients=[1],
+                square_costs=True,
+            ),
+            target_lows=[-0.17593358763413988],
+            target_highs=[1.0847411701303655],
+            horizon=150,
+        )
+    raise ValueError('Unknown task: {}'.format(task_name))
+
+
+def configure_task(task_name=None):
+    """Configure the module-level task-dependent constants."""
+    global CURRENT_TASK
+    global obs_in_use
+    global acts_in_use
+    global action_space
+    global computed_obs_in_use
+    global track_signals
+    global targets_in_obs
+    global k_step_targets_in_obs
+    global discrete_k_target_idx_in_obs
+    global add_tm_probs_to_obs
+    global reward_function
+    global target_lows
+    global target_highs
+    global horizon
+
+    if task_name is None:
+        task_name = DEFAULT_TASK
+    task_name = _normalize_task_name(task_name)
+    spec = _task_spec(task_name)
+    CURRENT_TASK = task_name
+    obs_in_use = spec['obs_in_use']
+    acts_in_use = spec['acts_in_use']
+    action_space = spec['action_space']
+    computed_obs_in_use = spec['computed_obs_in_use']
+    track_signals = spec['track_signals']
+    targets_in_obs = spec['targets_in_obs']
+    k_step_targets_in_obs = spec['k_step_targets_in_obs']
+    discrete_k_target_idx_in_obs = spec['discrete_k_target_idx_in_obs']
+    add_tm_probs_to_obs = spec['add_tm_probs_to_obs']
+    reward_function = spec['reward_function']
+    target_lows = spec['target_lows']
+    target_highs = spec['target_highs']
+    horizon = spec['horizon']
+    return spec
+
+
+TASK_SPECS = {task: _task_spec(task) for task in AVAILABLE_TASKS}
+configure_task(DEFAULT_TASK)
 
 # functions that you do not need to modify
 def state_names_to_idxs(data_path):

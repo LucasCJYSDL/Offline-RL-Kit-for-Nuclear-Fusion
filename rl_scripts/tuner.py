@@ -11,9 +11,6 @@ import torch
 import optuna
 from optuna.trial import TrialState
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
 class GenericHyperparameterTuner:
     """Generic hyperparameter tuner for offline RL algorithms"""
     
@@ -258,7 +255,7 @@ def get_tuning_args():
     parser = argparse.ArgumentParser(description="Generic Optuna-based hyperparameter tuner for offline RL")
     
     # Algorithm and configuration
-    parser.add_argument("--algo", type=str,default="td3bc",
+    parser.add_argument("--algo", type=str,default="edac",
                        help="Algorithm to tune (must exist in config file)")
     parser.add_argument("--config", type=str, default="/export/pgs/fuyang/Offline-RL-Kit-for-Nuclear-Fusion/rl_scripts/algo_config.json",
                        help="Path to algorithm configuration JSON file")
@@ -276,11 +273,11 @@ def get_tuning_args():
                        help="Base random seed")
     
     # Optuna settings
-    parser.add_argument("--n-trials", type=int, default=30,
+    parser.add_argument("--n-trials", type=int, default=45,
                        help="Number of optimization trials")
     parser.add_argument("--study-name", type=str, default=None,
                        help="Optuna study name (default: {algo}_optimization)")
-    parser.add_argument("--storage", type=str, default="sqlite:////export/pgs/fuyang/tune/optuna_study_pres.db",
+    parser.add_argument("--storage", type=str, default="sqlite:////export/pgs/fuyang/tune/optuna_study_prese.db",
                        help="Optuna storage URL for distributed optimization")
     parser.add_argument("--output-dir", type=str, default="/export/pgs/fuyang/tune",
                        help="Directory to save optimization results")

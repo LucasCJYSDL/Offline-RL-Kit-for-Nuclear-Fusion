@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from offlinerlkit.paths import tune_root
 from offlinerlkit.nets import MLP, VAE
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian
 from offlinerlkit.buffer import ReplayBuffer
@@ -14,6 +14,8 @@ from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs_new,make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import MCQPolicy
+from rl_scripts.config_utils import resolve_algo_defaults
+import rl_preparation as rp
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 
 def get_args():
@@ -38,17 +40,19 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="rotation")
+    parser.add_argument("--task", type=str, default="rotation", help=rp.TASK_ARG_HELP)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=0)
 
     # parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
-    parser.add_argument("--base-dir", type=str, default="/zfsauton2/home/jiayuc2/bao/synthesize_test_all/log")
+    parser.add_argument("--base-dir", type=str, default=str(tune_root))
+    resolve_algo_defaults(parser, os.path.join(os.path.dirname(__file__), "algo_config_bao.json"), "mcq")
     return parser.parse_args()
 
 
 def train(args=get_args()):
     # offline rl data and env
+    args.task = rp.resolve_task_name(args.task)
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device,is_val=True)
     

@@ -9,8 +9,8 @@ import numpy as np
 import torch
 
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from offlinerlkit.paths import tune_root
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import Actor, ActorProb, TanhDiagGaussian
 from offlinerlkit.buffer import ReplayBuffer
@@ -18,7 +18,9 @@ from offlinerlkit.utils.logger import Logger, make_log_dirs,make_log_dirs_new
 #from offlinerlkit.utils.logger import Logger, make_log_dirs_new
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import BCPolicy
+from rl_scripts.config_utils import resolve_algo_defaults
 
+import rl_preparation as rp
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 
 
@@ -35,11 +37,12 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # cannot be base
-    parser.add_argument("--task", type=str, default="rotation") # betan_EFIT01
+    parser.add_argument("--task", type=str, default="rotation", help=rp.TASK_ARG_HELP)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=5)
 
-    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+    parser.add_argument("--base-dir", type=str, default=str(tune_root))
+    resolve_algo_defaults(parser, os.path.join(os.path.dirname(__file__), "algo_config_bao.json"), "gcil")
 
     return parser.parse_args()
 
@@ -92,6 +95,7 @@ def GCIL(args, offline_data, env, logger): # this function is shared by some oth
 
 def train(args=get_args()):
     # offline rl data and env
+    args.task = rp.resolve_task_name(args.task)
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, _, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=True,is_val=True)
     

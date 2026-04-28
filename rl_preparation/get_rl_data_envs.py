@@ -4,30 +4,19 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 import h5py
 import numpy as np
 import pickle
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from rl_preparation.state_actuator_spaces import ( 
-    state_names_to_idxs, 
-    actuator_names_to_idxs, 
-    get_target_indices, 
-    acts_in_use, 
-    action_space,
-    computed_obs_in_use,
-    discrete_k_target_idx_in_obs,
-    k_step_targets_in_obs,
-    add_tm_probs_to_obs,
-    targets_in_obs,
-    track_signals,
-    vel_act_and_posn_act_idxs,  
-    actuator_act_and_next_act_idxs, 
+import rl_preparation as rp
+from rl_preparation import state_actuator_spaces as sas
+from rl_preparation.state_actuator_spaces import (
+    state_names_to_idxs,
+    actuator_names_to_idxs,
+    get_target_indices,
+    vel_act_and_posn_act_idxs,
+    actuator_act_and_next_act_idxs,
     pinj_tinj_idxs,
     actuator_posn_and_vel_idxs,
     state_posn_and_vel_idxs,
     pred_vel_idx,
-    target_lows,
-    target_highs,
-    horizon
 )
 from rl_preparation.process_raw_data import (
     raw_data_dir,
@@ -60,7 +49,9 @@ def _get_bootstrap_shot_id(path):
         return reference_shot
     return shot_ids[0]
 # load the offline dataset from the disk
-def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_states=False):
+def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_states=False, task=None):
+    if task is not None:
+        sas.configure_task(task)
     # get general data 
     offline_data = {}
     tracking_data_path = _get_tracking_data_path(is_val)
@@ -131,12 +122,12 @@ def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_stat
                 tracking_data[int(shot_id)]['tracking_ref'] = fixed_ref_shot_targets(ref_shot_next, offline_data['index_list'], None)
             elif env == "profile_control": # TODO: use the first option (commented for now)
                 #change evaluation targets
-                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
+                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], sas.horizon, None, eval_mode=True)
             elif env == "profile_control_new": # TODO: use the first option (commented for now)
                 #change evaluation targets
-                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
+                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], sas.horizon, None, eval_mode=True)
             elif env == "fusion_env":
-                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], horizon, None, eval_mode=True)
+                tracking_data[int(shot_id)]['tracking_ref'] = original_trajectory_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], sas.horizon, None, eval_mode=True)
             else:
                 raise NotImplementedError
 
@@ -144,13 +135,13 @@ def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_stat
     if env == "base": # TODO: decouple the target setting menthod with the env type
         offline_data['tracking_ref'] = fixed_ref_shot_targets(ref_shot_next, offline_data['index_list'], offline_data['terminals'])
     elif env == "profile_control":
-        offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'],eval_mode=False)
+        offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'], sas.horizon, offline_data['terminals'], eval_mode=False)
         # offline_data['tracking_ref'] = step_function_targets(offline_data['observations'], offline_data['index_list'], offline_data['terminals'], change_every)
         # TODO: usig 'next_observations'
     elif env == "profile_control_new":
-        offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'],eval_mode=False)
+        offline_data['tracking_ref'] = original_trajectory_targets_new(offline_data['observations'], offline_data['index_list'], sas.horizon, offline_data['terminals'], eval_mode=False)
     elif env == "fusion_env":
-        offline_data['tracking_ref'] = original_trajectory_targets(offline_data['observations'], offline_data['index_list'],150, offline_data['terminals'])
+        offline_data['tracking_ref'] = original_trajectory_targets(offline_data['observations'], offline_data['index_list'], sas.horizon, offline_data['terminals'])
     else:
         raise NotImplementedError
     
@@ -167,7 +158,7 @@ def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_stat
 
     offline_data['state_idxs'] = state_idxs
     offline_data['action_idxs'] = action_idxs
-    offline_data['action_names'] = action_space
+    offline_data['action_names'] = sas.action_space
     offline_data['vel_act_idxs'] = vel_act_idxs
     offline_data['posn_act_idxs'] = posn_act_idxs
     offline_data['actuator_act_idxs'] = actuator_act_idxs
@@ -198,12 +189,14 @@ def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_stat
 
 # get the offline rl data (in d4rl format) and training
 def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True, load_hidden_states=False):
+    rp.configure_task(task)
     offline_data, tracking_data = load_offline_data(
         env_id,
         task,
         is_il,
         is_val=is_val,
         load_hidden_states=load_hidden_states,
+        task=task,
     )
     bootstrap_shot_id = offline_data['bootstrap_tracking_shot_id']
 
@@ -273,19 +266,19 @@ def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True, load_hidden
     # For next_obs where termination is True, the tracking targets for them might be problematic. 
     # However, this doesn't affect training since the bootstrapping from those next_obs will be masked out.
     else:
-        if discrete_k_target_idx_in_obs is not None:
-            num_targets_in_obs = len(discrete_k_target_idx_in_obs)
+        if sas.discrete_k_target_idx_in_obs is not None:
+            num_targets_in_obs = len(sas.discrete_k_target_idx_in_obs)
         else:
-            num_targets_in_obs = k_step_targets_in_obs
+            num_targets_in_obs = sas.k_step_targets_in_obs
         offline_data['obs_dim'] = (
                 len(offline_data['state_idxs'])
                 + len(offline_data['action_idxs'])
                 + len(offline_data['next_ob_idxs'])
                 + int(np.sum([ob.num_obs_computed * num_targets_in_obs
-                                if 'PTerm' in str(ob) else ob.num_obs_computed for ob in computed_obs_in_use ]))
-                + targets_in_obs * len(track_signals) * num_targets_in_obs
-                + add_tm_probs_to_obs)
-        offline_data['act_dim'] = len(action_space)
+                                if 'PTerm' in str(ob) else ob.num_obs_computed for ob in sas.computed_obs_in_use ]))
+                + sas.targets_in_obs * len(sas.track_signals) * num_targets_in_obs
+                + sas.add_tm_probs_to_obs)
+        offline_data['act_dim'] = len(sas.action_space)
     return offline_data, sa_processor, env, training_model_dir
     
 

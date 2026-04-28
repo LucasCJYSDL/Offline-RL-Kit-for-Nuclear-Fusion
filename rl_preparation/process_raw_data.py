@@ -1,69 +1,118 @@
 import os
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-import sys
 import torch
-import h5py
+from typing import List, Optional
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import rl_preparation as rp
+from rl_preparation import state_actuator_spaces as sas
 from envs.utils.data_preprocess import get_raw_data, store_offlinerl_dataset
+from rl_preparation.paths import (
+    evaluation_model_dir as _evaluation_model_dir,
+    full_data_path as _full_data_path,
+    il_data_path as _il_data_path,
+    processed_data_dir as _processed_data_dir,
+    raw_data_dir as _raw_data_dir,
+    rl_data_path as _rl_data_path,
+    tracking_test_data_path as _tracking_test_data_path,
+    tracking_val_data_path as _tracking_val_data_path,
+    training_model_dir as _training_model_dir,
+)
 
 
 
-#!!! what you need to specify
-#raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_flattop" # the raw data  #/zfsauton/project/fusion/data/organized/minimal_cakenn_v4_expand_cont0002_noq_fix
-#raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
-raw_data_dir= "/data/datasets/noshape_gas_benchmark_synthesized_dymodel_all"
-#training_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
-#evaluation_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # the rpnn dynamics model for evaluation, which can be different from the training one #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final
-training_model_dir = "/data/models/rpnn_noshape_gas_benchmark_synthesize_step2" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
-evaluation_model_dir = "/data/models/rpnn_noshape_gas_benchmark_synthesize_step2"
-action_bound_file = "noshape_gas_flattop.yaml" # actuator bounds, which you probably don't need to change
-state_bound_file = "noshape_gas_flattop.yaml" # state bounds, which you probably don't need to change
-reference_shot = 161409 # 189268 161412
-#out of range
-# reference_shot = 161609
+action_bound_file = os.getenv("OFFLINERLKIT_ACTION_BOUND_FILE", "noshape_gas_flattop.yaml")
+state_bound_file = os.getenv("OFFLINERLKIT_STATE_BOUND_FILE", "noshape_gas_flattop.yaml")
+reference_shot = int(os.getenv("OFFLINERLKIT_REFERENCE_SHOT", "161409"))
+warmup_steps = int(os.getenv("OFFLINERLKIT_WARMUP_STEPS", "0"))
+change_every = int(os.getenv("OFFLINERLKIT_CHANGE_EVERY", "50"))
+code_base = os.getenv("OFFLINERLKIT_CODE_BASE", "new")
 
-#need change
-warmup_steps = 0  # we won't involve the first () steps of each shot in the training dataset
-change_every = 50 # change the tracking target every () time steps
-#save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old" # the processed data will be saved here
-#save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old_betan" # need to change, the processed data will be saved here
-# save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized"
-# save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_old"
-# save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl100_il13"
-#save_data_dir="/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
-#save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_old"
-#save_data_dir="/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200"
-#out of range
-# save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_out_of_range"
-# save_data_dir = "/home/scratch/jiayuc2/data/noshape_gas_flattop_synthesized_rl200_il200_out_of_range_old"
-
-save_data_dir = "/data/datasets/noshape_gas_benchmark_synthesized_dymodel_all_filter"
+# Backward-compatible string aliases that existing scripts can import.
+raw_data_dir = str(_raw_data_dir)
+training_model_dir = str(_training_model_dir)
+evaluation_model_dir = str(_evaluation_model_dir)
+save_data_dir = str(_processed_data_dir)
+full_data_path = str(_full_data_path)
+rl_data_path = str(_rl_data_path)
+il_data_path = str(_il_data_path)
+tracking_val_data_path = str(_tracking_val_data_path)
+tracking_test_data_path = str(_tracking_test_data_path)
 
 
-os.makedirs(save_data_dir, exist_ok=True)
+def _resolve_tracking_data_path() -> str:
+    tracking_split = os.getenv("OFFLINERLKIT_TRACKING_SPLIT", "val").strip().lower()
+    if tracking_split == "test":
+        return tracking_test_data_path
+    return tracking_val_data_path
 
-# #rl_shot_list = list(range(reference_shot - 1000, reference_shot + 1000)) # these shots are used for rl training
-# # rl_shot_list = list(range(reference_shot - 6, reference_shot + 7)) # these shots are used for rl training
-# rl_shot_list = list(range(reference_shot - 200, reference_shot + 200))
-# # il_shot_list = list(range(reference_shot - 6, reference_shot + 7)) # these shots are used to imitate
-# il_shot_list =list(range(reference_shot - 200, reference_shot + 200))
-# # tracking_shot_list = list(range(reference_shot - 5, reference_shot + 5)) # we would test the policy by tracking shots in this list 
-# tracking_shot_list =  [161409, 161410, 161412]
-# # tracking_shot_list = [161609, 161610, 161611] #out of range
-full_data_path = save_data_dir + '/full.hdf5'
-rl_data_path = save_data_dir + '/rl_data.h5'
-il_data_path = save_data_dir + '/il_data.h5'
-tracking_val_data_path = save_data_dir + '/tracking_val.h5'
-tracking_test_data_path = save_data_dir + '/tracking_test.h5'
 
-code_base = "new" # "old" or "new", old means the code in fusion_env, new means the code in profile_control
+tracking_data_path = _resolve_tracking_data_path()
+
+
+def _parse_shot_list(value: Optional[str]) -> List[int]:
+    if not value:
+        return []
+    return [int(item.strip()) for item in value.split(",") if item.strip()]
+
+
+def _default_shot_window(center: int, radius: int) -> List[int]:
+    return list(range(center - radius, center + radius + 1))
+
+
+def _resolve_shot_list(env_name: str, fallback: List[int]) -> List[int]:
+    shot_list = _parse_shot_list(os.getenv(env_name))
+    return shot_list if shot_list else fallback
+
+
+def main() -> None:
+    os.makedirs(save_data_dir, exist_ok=True)
+
+    task_name = os.getenv("OFFLINERLKIT_TASK", "temp")
+    rp.configure_task(task_name)
+
+    shot_radius = int(os.getenv("OFFLINERLKIT_SHOT_RADIUS", "200"))
+    rl_shot_list = _resolve_shot_list(
+        "OFFLINERLKIT_RL_SHOTS",
+        _default_shot_window(reference_shot, shot_radius),
+    )
+    il_shot_list = _resolve_shot_list(
+        "OFFLINERLKIT_IL_SHOTS",
+        _default_shot_window(reference_shot, shot_radius),
+    )
+    tracking_shot_list = _resolve_shot_list(
+        "OFFLINERLKIT_TRACKING_SHOTS",
+        [reference_shot, reference_shot + 1, reference_shot + 2],
+    )
+
+    device_name = os.getenv("OFFLINERLKIT_DEVICE")
+    device = (
+        torch.device(device_name)
+        if device_name
+        else torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    )
+
+    all_shots = sorted(set(rl_shot_list) | set(il_shot_list) | set(tracking_shot_list))
+    offline_dst = get_raw_data(
+        raw_data_dir,
+        action_bound_file,
+        state_bound_file,
+        all_shots,
+        warmup_steps,
+    )
+    tracking_output_path = _resolve_tracking_data_path()
+    store_offlinerl_dataset(
+        offline_dst,
+        training_model_dir,
+        rl_data_path,
+        il_data_path,
+        tracking_output_path,
+        rl_shot_list,
+        il_shot_list,
+        tracking_shot_list,
+        device,
+        code_base,
+    )
 
 if __name__ == "__main__":
-    # convert raw data to rl data
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    all_shots = list(set(rl_shot_list) | set(il_shot_list) | set(tracking_shot_list))
-    offline_dst = get_raw_data(raw_data_dir, action_bound_file, state_bound_file, all_shots, warmup_steps) 
-    store_offlinerl_dataset(offline_dst, training_model_dir, rl_data_path, il_data_path, tracking_data_path, 
-                            rl_shot_list, il_shot_list, tracking_shot_list, device, code_base)
+    main()

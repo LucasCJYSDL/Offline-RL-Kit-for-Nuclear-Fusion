@@ -6,13 +6,14 @@ import torch
 import sys, os
 from gym.spaces import Box
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian
 from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import CQLPolicy
+from rl_scripts.config_utils import resolve_algo_defaults
+import rl_preparation as rp
 from rl_preparation.get_rl_data_envs import get_rl_data_envs
 from envs.utils.arg_utils import normalize_args
 
@@ -45,10 +46,10 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="temp") #?
+    parser.add_argument("--task", type=str, default="temp", help=rp.TASK_ARG_HELP)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=7)
-
+    resolve_algo_defaults(parser, os.path.join(os.path.dirname(__file__), "algo_config.json"), "cql")
     return parser.parse_args()
 
 def train(args=None):
@@ -58,6 +59,7 @@ def train(args=None):
     # Convert attribute names with hyphens to underscores for consistency
     # This handles the case where args come from command line (with hyphens)
     args = normalize_args(args)
+    args.task = rp.resolve_task_name(args.task)
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device,is_val=True)

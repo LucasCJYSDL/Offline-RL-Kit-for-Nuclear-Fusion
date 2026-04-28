@@ -11,8 +11,6 @@ import torch
 import optuna
 from optuna.trial import TrialState
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 
 def get_tuning_args():
     """Get command line arguments for hyperparameter tuning"""

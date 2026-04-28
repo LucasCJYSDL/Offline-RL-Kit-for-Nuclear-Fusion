@@ -7,21 +7,7 @@ import numpy as np
 import torch
 import pickle
 
-from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
-from rl_preparation.state_actuator_spaces import ( 
-    reward_function,
-    computed_obs_in_use,
-    discrete_k_target_idx_in_obs,
-    k_step_targets_in_obs,
-    add_tm_probs_to_obs,
-    targets_in_obs,
-    track_signals,
-    actuator_bounder,
-    reward_function,
-    target_lows,
-    target_highs,
-    horizon
-)
+from rl_preparation import state_actuator_spaces as sas
 from rl_preparation.process_raw_data import raw_data_dir
 
 class SA_processor: # used for both training and evaluation
@@ -66,11 +52,12 @@ class SA_processor: # used for both training and evaluation
         self.tracking_target_names = offline_data['tracking_target_names']
         self.action_names = offline_data['action_names']
 
-        if computed_obs_in_use is None:
+        if sas.computed_obs_in_use is None or len(sas.computed_obs_in_use) == 0:
             self.computed_observations = []
         else:
-            self.computed_observations = computed_obs_in_use
+            self.computed_observations = list(sas.computed_obs_in_use)
             print(f'Using {len(self.computed_observations)} computed observations.')
+        self.reward_function = sas.reward_function
 
     def build_rl_state_from_next_state(
         self,
@@ -162,7 +149,7 @@ class SA_processor: # used for both training and evaluation
         else:
             #boundary checkout
             targets = self.training_tracking_targets[idx] # for training
-        reward = reward_function.get_reward(next_state[:, self.idx_list],None,self.info,self.idx_list,targets)
+        reward = self.reward_function.get_reward(next_state[:, self.idx_list], None, self.info, self.idx_list, targets)
         return reward
         # this design is flexible - we are using "-mse" as the reaward
         #return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
@@ -188,6 +175,8 @@ class SA_processor: # used for both training and evaluation
 
 class NFBaseEnv: # env for evaluation
     def __init__(self, model_dir, sa_processor, general_data, tracking_data, ref_shot_id, device):
+        from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
+
         state_idxs, action_idxs = general_data['state_idxs'], general_data['action_idxs']
         tracking_states, tracking_pre_actions, tracking_actions = tracking_data['tracking_states'], tracking_data['tracking_pre_actions'], \
                                                                   tracking_data['tracking_actions']
@@ -196,7 +185,7 @@ class NFBaseEnv: # env for evaluation
         self.ref_shot_id = ref_shot_id
         self.time_limit = tracking_states.shape[0] # this should be the horizon of the reference shot
 
-        self.cur_shot_time_limit = 150
+        self.cur_shot_time_limit = sas.horizon
         self.tracking_states = np.array(tracking_states)
         self.tracking_pre_actions = np.array(tracking_pre_actions)
         self.tracking_actions = np.array(tracking_actions)

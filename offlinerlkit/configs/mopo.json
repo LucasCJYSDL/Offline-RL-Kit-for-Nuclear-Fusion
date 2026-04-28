@@ -1,0 +1,27 @@
+{
+  "algo_name": "mopo",
+  "train_module": "run_mopo",
+  "default_params": {
+    "algo_name": "mopo",
+    "actor_lr": 0.0001,
+    "critic_lr": 0.0003,
+    "hidden_dims": [
+      256,
+      256
+    ],
+    "gamma": 0.99,
+    "tau": 0.005,
+    "alpha": 0.2,
+    "auto_alpha": true,
+    "target_entropy": null,
+    "alpha_lr": 0.0001,
+    "rollout_freq": 1000,
+    "rollout_batch_size": 50000,
+    "model_retain_epochs": 5,
+    "real_ratio": 0.05,
+    "epoch": 1000,
+    "step_per_epoch": 1000,
+    "eval_episodes": 5,
+    "batch_size": 256
+  }
+}

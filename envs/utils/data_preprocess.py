@@ -11,12 +11,22 @@ from collections import defaultdict
 import pickle
 import h5py
 from tqdm import tqdm
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
-from rl_preparation.state_actuator_spaces import action_space
-
-from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
+from rl_preparation import state_actuator_spaces as sas
+from offlinerlkit.paths import REPO_ROOT
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
+data_path = os.getenv(
+    "OFFLINERLKIT_PREPROCESSED_DATA_DIR",
+    str(REPO_ROOT / "data" / "preprocessed" / "noshape_ech"),
+)
+req_shots_path = os.getenv(
+    "OFFLINERLKIT_REQUIRED_SHOTS_PATH",
+    str(REPO_ROOT / "data" / "tm_shots.txt"),
+)
+tm_labels_path = os.getenv(
+    "OFFLINERLKIT_TM_LABELS_PATH",
+    str(REPO_ROOT / "data" / "tm_labels"),
+)
 
 
 def _post_process(general_data, offline_dst):
@@ -106,8 +116,8 @@ def get_raw_data(offline_data_dir, action_bound_file, state_bound_file, shot_lis
     offline_data['action_lower_bounds'] = np.array(offline_data['action_lower_bounds'])
     offline_data['action_upper_bounds'] = np.array(offline_data['action_upper_bounds'])
 
-    basenames = [act[:-len('_velocity')] if 'velocity' in act else act 
-                 for act in action_space ]
+    basenames = [act[:-len('_velocity')] if 'velocity' in act else act
+                 for act in sas.action_space]
     
     _labels_are_velocities = 'velocity' in data_info['next_state_space'][0]
     for bn in basenames:
@@ -183,6 +193,8 @@ def get_raw_data(offline_data_dir, action_bound_file, state_bound_file, shot_lis
 
 
 def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, tracking_data_path, rl_shot_list, il_shot_list, tracking_shot_list, device, code_base):
+    from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
+
     rl_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
                 'terminals': [], 'time_step': [], 'hidden_states': [], 'traj_start_indices': []}
     il_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
@@ -331,4 +343,3 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
             group = hdf.create_group(str(shot_id))
             for key, value in shot_data.items():
                 group.create_dataset(key, data=value)
-
