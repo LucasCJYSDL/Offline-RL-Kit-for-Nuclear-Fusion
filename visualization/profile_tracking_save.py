@@ -20,7 +20,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/export/pgs/fuyang/result_411",
+                       default="/export/pgs/fuyang/result_51",
                        help="Base directory for saving all results")
     # parser.add_argument("--save_base_dir", type=str, 
     #                    default="/home/scratch/jiayuc2/bao/Eval_optuna/rotation",
@@ -39,10 +39,10 @@ def get_args():
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
     # parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/rl_out_optimized_296/prof_tracking_q_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized/policy")
-    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/temp/combo&cql_weight=10&rollout_length=7/seed_1&timestamp_26-0410-225124")
+    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/temp/mopo&penalty_coef=1&rollout_length=7/seed_1&timestamp_26-0411-142926")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
-    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256, 256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
+    parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
     parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
     parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian (required for IQL/PPO)")
     parser.add_argument("--dropout_rate", type=float, default=None, help="Dropout rate for actor backbone (e.g. 0.1 for MCQ)")
