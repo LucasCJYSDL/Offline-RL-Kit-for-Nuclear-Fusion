@@ -1,0 +1,3 @@
+[console_scripts]
+nf-process-raw-data = rl_preparation.process_raw_data:main
+nf-train-dynamics = dynamics.train_dynamics:train_ensemble

@@ -1,9 +1,3 @@
-"""
-Main file to use for training dynamics models.
-
-Author: Ian Char
-"""
-
 import os
 
 import hydra

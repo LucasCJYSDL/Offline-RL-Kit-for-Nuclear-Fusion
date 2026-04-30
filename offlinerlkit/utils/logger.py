@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union
 from tokenize import Number
 from torch.utils.tensorboard import SummaryWriter
 
+from offlinerlkit.paths import log_root
+
 
 DEBUG = 10
 INFO = 20
@@ -20,9 +22,7 @@ ERROR = 40
 BACKUP = 60
 
 DEFAULT_X_NAME = "timestep"
-# ROOT_DIR = "log"
-# ROOT_DIR = "/export/pgs/fuyang/tune/log_tune"
-ROOT_DIR = "/export/pgs/fuyang/log_syn"
+ROOT_DIR = str(log_root)
 
 class KVWriter(object):
     """
@@ -356,7 +356,8 @@ def make_log_dirs(
             algo_name += f"&{param_name}={args[param_name]}"
     timestamp = datetime.datetime.now().strftime("%y-%m%d-%H%M%S")
     exp_name = f"seed_{seed}&timestamp_{timestamp}"
-    log_dirs = os.path.join(ROOT_DIR, task_name, algo_name, exp_name)
+    base_dir = args.get("base_dir", ROOT_DIR)
+    log_dirs = os.path.join(base_dir, task_name, algo_name, exp_name)
     os.makedirs(log_dirs)
     return log_dirs
 

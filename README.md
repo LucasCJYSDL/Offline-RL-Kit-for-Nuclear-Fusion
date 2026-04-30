@@ -12,6 +12,7 @@
    ```bash
    pip install -e .
    ```
+   This installs the reusable library modules. Training and tuning entry points stay in the repository-level `scripts/` folder and are run from the source checkout rather than exposed as installed console commands.
 
 3. If your data or model directories are not in the default `data/` and `models/` locations, set these environment variables before running the code:
    - `OFFLINERLKIT_DATA_ROOT`
@@ -46,21 +47,21 @@
 
 - You can run different offline RL algorithms simply by:
     ```bash
-    python -m rl_scripts.run_ppo --env profile_control_new --task temp
+    python scripts/run_ppo.py --env profile_control_new --task temp
     ```
     - Other available entry points include `run_cql`, `run_iql`, `run_edac`, `run_mcq`, `run_td3bc`, `run_combo`, `run_mobile`, `run_mopo`, `run_bambrl`, `run_rambo`, and `run_rombrl`.
     - Pick the task that matches the data you prepared, for example `temp`, `rotation`, `dens`, `pres`, `q`, or `betan`.
-    - Each algorithm now has its own JSON file under `offlinerlkit/configs/` such as `ppo.json`, `cql.json`, `td3bc.json`, and `mppi.json`.
-    - To customize algorithm parameters, copy the matching JSON file, edit its `default_params` section, and pass the copy back with `--config` if you want to keep the original untouched. Command-line flags still override config defaults, so you can keep a shared JSON and tweak a few values ad hoc.
+    - Benchmark defaults are stored in `offlinerlkit/configs/benchmark_configs.json` as a `task × algorithm` table.
+    - Each training script auto-loads the matching parameter block for the task and algorithm you request. Command-line flags still override the benchmark defaults when you want to run ablations or ad hoc checks.
 
 - You can run a goal-conditioned imitation learning algorithm by:
     ```bash
-    python -m rl_scripts.run_gcil --env profile_control --task rotation
+    python scripts/run_gcil.py --env profile_control --task rotation
     ```
 
 - As an alternative, we provide scripts to run planning algorithms on the learned dynamics and distill policy functions from the planning results, which can be run by:
     ```bash
-    python -m rl_scripts.run_mppi --env profile_control --task rotation
+    python scripts/run_mppi.py --env profile_control --task rotation
     ```
     - The current planning entry point is `run_mppi`.
 
@@ -73,10 +74,11 @@
   print(offlinerlkit.available_envs())
   print(offlinerlkit.available_tasks())
   print(offlinerlkit.available_algo_names())
+  print(offlinerlkit.available_benchmark_tasks())
   rp.configure_task("temp")
   dataset = offlinerlkit.load_dataset("profile_control_new", "temp", device=torch.device("cpu"))
   env = offlinerlkit.make_env("profile_control_new", "temp", device=torch.device("cpu"))
-  algo_cfg, cfg_path = offlinerlkit.load_algo_config("ppo")
+  algo_cfg, cfg_path = offlinerlkit.load_benchmark_config("temp", "ppo")
   print(cfg_path)
   ```
 

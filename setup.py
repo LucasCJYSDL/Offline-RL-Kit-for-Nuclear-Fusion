@@ -39,8 +39,6 @@ setup(
             "dynamics.*",
             "rl_preparation",
             "rl_preparation.*",
-            "rl_scripts",
-            "rl_scripts.*",
             "visualization",
             "visualization.*",
         ]
@@ -48,11 +46,11 @@ setup(
     include_package_data=True,
     package_data={
         "dynamics": ["cfgs/*.yaml"],
+        "offlinerlkit.configs": ["benchmark_configs.json"],
     },
     entry_points={
         "console_scripts": [
             "nf-process-raw-data=rl_preparation.process_raw_data:main",
-            "nf-run-ppo=rl_scripts.run_ppo:main",
             "nf-train-dynamics=dynamics.train_dynamics:train_ensemble",
         ]
     },

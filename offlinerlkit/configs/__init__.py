@@ -1,4 +1,4 @@
-"""Packaged algorithm configuration helpers."""
+"""Benchmark configuration helpers."""
 
 import argparse
 import json
@@ -6,11 +6,10 @@ import sys
 from pathlib import Path
 from typing import Dict, Tuple
 
-PACKAGE_DIR = Path(__file__).resolve().parent
+import rl_preparation as rp
 
-NORMAL_ALGOS = ("combo", "cql", "edac", "mobile", "mopo", "ppo", "td3bc")
-BAO_ALGOS = ("iql", "mcq", "gcil", "bambrl", "rambo", "mppi", "rombrl")
-ALGO_CONFIGS = {name: PACKAGE_DIR / f"{name}.json" for name in (*NORMAL_ALGOS, *BAO_ALGOS)}
+PACKAGE_DIR = Path(__file__).resolve().parent
+BENCHMARK_CONFIGS_PATH = PACKAGE_DIR / "benchmark_configs.json"
 
 
 def _ensure_argument(parser: argparse.ArgumentParser, *args, **kwargs) -> None:
@@ -28,59 +27,73 @@ def _normalize_default_keys(defaults: Dict) -> Dict:
 
 
 def available_algo_names():
-    """Return the canonical algorithm names shipped with the package."""
-    return tuple(sorted(ALGO_CONFIGS.keys()))
+    """Return the algorithm names present in the benchmark configuration table."""
+    configs, _ = load_benchmark_configs()
+    algo_names = set()
+    for task_configs in configs.values():
+        algo_names.update(task_configs.keys())
+    return tuple(sorted(algo_names))
 
 
-def get_default_algo_config_path(algo_name: str) -> str:
-    """Return the packaged config path for one algorithm."""
-    algo_key = algo_name.lower()
-    if algo_key not in ALGO_CONFIGS:
-        raise KeyError(f"Unknown algorithm '{algo_name}'")
-    return str(ALGO_CONFIGS[algo_key])
+def load_benchmark_configs(config_path: str = None) -> Tuple[Dict, str]:
+    """Load the task-by-algorithm benchmark configuration table."""
+    path = Path(config_path) if config_path else BENCHMARK_CONFIGS_PATH
+    if not path.exists():
+        raise FileNotFoundError(f"Benchmark configuration file not found: {path}")
 
-
-def resolve_config_path(config_path: str = None, algo_name: str = None) -> Path:
-    """Resolve an algorithm config path, falling back to the packaged file."""
-    if config_path:
-        candidate = Path(config_path)
-        if candidate.exists():
-            return candidate
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-
-    if algo_name is None:
-        raise ValueError("Either config_path or algo_name must be provided")
-
-    algo_key = algo_name.lower()
-    if algo_key not in ALGO_CONFIGS:
-        raise KeyError(f"Unknown algorithm '{algo_name}'")
-    return ALGO_CONFIGS[algo_key]
-
-
-def load_algo_config(algo_name: str, config_path: str = None) -> Tuple[Dict, str]:
-    """Load a single algorithm configuration section and its source path."""
-    path = resolve_config_path(config_path, algo_name=algo_name)
     with path.open("r", encoding="utf-8") as f:
-        config = json.load(f)
-
-    if config.get("algo_name", algo_name.lower()) != algo_name.lower():
-        raise ValueError(f"Configuration file '{path}' does not match algorithm '{algo_name}'")
-
-    return config, str(path)
+        configs = json.load(f)
+    return configs, str(path)
 
 
-def apply_algo_defaults(
-    parser: argparse.ArgumentParser,
+def available_benchmark_tasks(config_path: str = None):
+    """Return the canonical task names with benchmark parameter entries."""
+    configs, _ = load_benchmark_configs(config_path=config_path)
+    return tuple(sorted(configs.keys()))
+
+
+def load_benchmark_config(
+    task: str,
     algo_name: str,
     config_path: str = None,
 ) -> Tuple[Dict, str]:
-    """Load defaults from the algorithm config and install them on an argparse parser."""
+    """Load benchmark parameters for one task and one algorithm."""
+    task_key = rp.resolve_task_name(task)
+    algo_key = algo_name.lower()
+    configs, resolved_path = load_benchmark_configs(config_path=config_path)
+
+    if task_key not in configs:
+        raise KeyError(f"Unknown benchmark task '{task}'")
+
+    task_configs = configs[task_key]
+    if algo_key not in task_configs:
+        raise KeyError(f"Algorithm '{algo_name}' has no benchmark config for task '{task_key}'")
+
+    return _normalize_default_keys(task_configs[algo_key]), resolved_path
+
+
+def apply_benchmark_defaults(
+    parser: argparse.ArgumentParser,
+    algo_name: str,
+    *,
+    default_task: str = "temp",
+    config_path: str = None,
+) -> Tuple[Dict, str]:
+    """Load task-specific benchmark defaults and install them on an argparse parser."""
     bootstrap = argparse.ArgumentParser(add_help=False)
-    bootstrap.add_argument("--config", type=str, default=config_path or get_default_algo_config_path(algo_name))
+    bootstrap.add_argument("--task", type=str, default=default_task)
+    bootstrap.add_argument(
+        "--config",
+        type=str,
+        default=config_path or str(BENCHMARK_CONFIGS_PATH),
+    )
     known_args, _ = bootstrap.parse_known_args(sys.argv[1:])
 
-    config, resolved_path = load_algo_config(algo_name, config_path=known_args.config)
-    defaults = _normalize_default_keys(config.get("default_params", {}))
+    defaults, resolved_path = load_benchmark_config(
+        known_args.task,
+        algo_name,
+        config_path=known_args.config,
+    )
     if defaults:
         parser.set_defaults(**defaults)
 
@@ -89,6 +102,6 @@ def apply_algo_defaults(
         "--config",
         type=str,
         default=resolved_path,
-        help="Path to the algorithm JSON config file",
+        help="Path to the task-by-algorithm benchmark config JSON file",
     )
-    return config, resolved_path
+    return defaults, resolved_path
