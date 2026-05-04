@@ -10,9 +10,9 @@ import numpy as np
 from tqdm import tqdm
 
 
-RAW_DATA_DIR = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark"
-SOURCE_DATA_DIR = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_dymodel_all"
-OUTPUT_DATA_DIR = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_dymodel_all_filter"
+RAW_DATA_DIR = "/path/to/anonymized/data/noshape_gas_benchmark"
+SOURCE_DATA_DIR = "/path/to/anonymized/data/noshape_gas_benchmark_synthesized_dymodel_all"
+OUTPUT_DATA_DIR = "/path/to/anonymized/data/noshape_gas_benchmark_synthesized_dymodel_all_filter"
 
 SOURCE_FULL_PATH = os.path.join(SOURCE_DATA_DIR, "full.hdf5")
 OUTPUT_FULL_PATH = os.path.join(OUTPUT_DATA_DIR, "full.hdf5")

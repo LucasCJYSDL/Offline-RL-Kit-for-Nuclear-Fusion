@@ -75,17 +75,53 @@ pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 \
    - `OFFLINERLKIT_TRAINING_MODEL_DIR`
    - `OFFLINERLKIT_EVALUATION_MODEL_DIR`
 
-## Dynamics Modelling
+## Dynamics Modelling (Optional)
 
-- (Optional) As an alternative of real experiment data, we provide a script to synthesize data with an exisiting dynamics model:
-    ```bash
-    python -m dynamics.synthesize_rollouts
-    ```
-- You can train an ensemble of dynamics models by running the following command:
-    ```bash
-    python -m dynamics.train_dynamics
-    ```
-    - By default, the script will use the configuration specified by the "config_name" argument within "train_dynamics.py". You may optinally modify or add configuration files in "dynamics/cfgs".
+We provide pre-trained dynamics models for offline model-based RL at:
+https://huggingface.co/Neurips-ED-submission-685/fusion-rl-dynamics-model
+
+To train the dynamics models yourself:
+
+### 1. Download the training dataset
+
+Download the files under the `raw/` folder from:
+https://huggingface.co/datasets/Neurips-ED-submission-685/fusion-rl-benchmark/tree/main/raw
+
+### 2. Prepare the training configuration
+
+The training configurations are provided in:
+- `dynamics/cfgs/rpnn_noshape_gas_benchmark1.yaml`
+- `dynamics/cfgs/rpnn_noshape_gas_benchmark2.yaml`
+
+Update the configuration files so that:
+- `data_path` points to the downloaded dataset directory;
+- `save_path` points to the output directory for the trained model;
+- in `rpnn_noshape_gas_benchmark2.yaml`, `model.load_dir` points to the directory produced by the first-stage training.
+
+### 3. Train the dynamics models
+
+Launch the two-stage training pipeline:
+
+```bash
+python dynamics/launch_dynamics.py --cn rpnn_noshape_gas_benchmark1
+python dynamics/launch_dynamics.py --cn rpnn_noshape_gas_benchmark2
+```
+
+Here, `rpnn_noshape_gas_benchmark1` and `rpnn_noshape_gas_benchmark2` are the first-stage and second-stage training configs, respectively.
+
+To train a single configuration directly:
+
+```bash
+python dynamics/train_dynamics.py -cn rpnn_noshape_gas_benchmark1
+```
+
+### 4. Evaluate the trained dynamics model
+
+Evaluate a trained model with:
+
+```bash
+python dynamics/reevaluate_dynamics.py --model_dir /path/to/trained_model
+```
 
 ## Policy Learning
 

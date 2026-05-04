@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 DEFAULT_COMMAND = ["python", "dynamics/train_dynamics.py"]
 DEFAULT_CN = "rpnn_noshape_gas_benchmark2"
-DEFAULT_LOG_DIR = "/home/scratch/jiayuc2/bao/dynamic_models/logs"
+DEFAULT_LOG_DIR = "/path/to/anonymized/logs/dynamic_models"
 DEFAULT_GPUS = "0,1,2,3,4,5,6,7"
 DEFAULT_MAX_JOBS_PER_GPU = 1  # With batch size 1024, 1 job takes ~10.6 GB.
 DEFAULT_NUM_MODELS = 25

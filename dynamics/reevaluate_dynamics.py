@@ -19,10 +19,8 @@ import torch
 import uncertainty_toolbox as uct
 from matplotlib import pyplot as plt
 
-from fusion_control.dynamics.data_modules.kfold_data_module import KFoldFusionDataModule
-from fusion_control.dynamics.data_modules.kfold_sequence_data_module import (
-    KFoldSequenceFusionDataModule,
-)
+from dynamics.orig_kfold_data_module import KFoldFusionDataModule
+from dynamics.orig_kfold_sequence_data_module import KFoldSequenceFusionDataModule
 
 import pandas as pd
 from datetime import datetime
@@ -40,26 +38,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--model_dir",
     type=str,
-    # default = "/home/scratch/rsonker/ech/dynamics_models/rpnn_noshape_gas_step_two_logvar"
-    # default = "/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_new_shots_step_two_nll_bmsinfo",
-    # default = '/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_step2',
-    # default= "/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_bms_step_one_mse_1_red_v2",
-    # default= "/zfsauton/project/fusion/models/rpnn_noshape_gas_new_shots_step_two_nll_bmsinfo",
-    # default= "/zfsauton/project/fusion/models/rpnn_minimal_zipfit_cont001_noq_final",
-    # default = "/zfsauton/project/fusion/ndeka/models_out/minimal_cakenn_v4_expand_cont002_noq"
-    default = "/home/scratch/jiayuc2/bao/dynamic_models/rpnn_noshape_gas_benchmark_synthesize_step2"
+    # Replace with your local ensemble/model directory before use.
+    default="/path/to/anonymized/models/rpnn_noshape_gas_benchmark_synthesize_step2",
 )
-# default = '/home/scratch/rsonker/FusionControl/dynamics_out/ijcnn/ijcnn_model')
 # getting the data from the model cfg
 # parser.add_argument(  
 #     "--data_dir",
 #     type=str,
 #     # default='./data/highbetap/v2/25ms/difference_subset')
 #     # default='./data/v7/profile/2022-05-10')
-#     # default ='/home/scratch/rsonker/FusionControl/data/organised/aug2023')
-#     # default = '/home/scratch/rsonker/FusionControl/data/2023-02-01/wshapecontrol')
-#     # default="/home/scratch/rsonker/FusionControl/data/2023-02-01/wshapecontrol",
-#     default = "/home/scratch/rsonker/ech/data/organized/noshape_qrfe_tm_1_v2",
+#     # default="/path/to/anonymized/data/your_dataset",
 # )
 parser.add_argument("--samples_per_pt", type=int, default=1) # 30 only when sampling
 parser.add_argument("--convert_to_difference", type=int, default=0)
@@ -70,7 +58,11 @@ parser.add_argument("--do_uct", default=0, type=int)
 parser.add_argument("--warm_up", default=0, type=int)
 parser.add_argument("--cuda_device", default=3, type=int)
 parser.add_argument("--use_model_cfg_data_module", type=int, default=1)
-parser.add_argument("--provide_model_for_te_shots", type=str, default="/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_bms_step_one_mse_1_red")
+parser.add_argument(
+    "--provide_model_for_te_shots",
+    type=str,
+    default="/path/to/anonymized/models/reference_te_shots_model",
+)
 parser.add_argument(
     "--te_relative_path",
     type=str,
@@ -83,6 +75,11 @@ parser.add_argument(
 #     "--output_path", default="model_out/rpnn_noshape_qrfe_tm_1-wotm", type=str
 # )
 args = parser.parse_args()
+device = (
+    torch.device(f"cuda:{args.cuda_device}")
+    if args.cuda_device is not None and args.cuda_device >= 0 and torch.cuda.is_available()
+    else torch.device("cpu")
+)
 
 ###########################################################################
 # %% Load in the model, dataset, and get the correct shots.
@@ -90,19 +87,21 @@ args = parser.parse_args()
 if args.is_ensemble:
     model = load_ensemble_from_parent_dir(args.model_dir)
     te_shots = np.load(os.path.join(args.model_dir, args.te_relative_path))
-    if args.cuda_device is not None:
+    if device.type == "cuda":
         for memb in model.members:
-            memb.to(f"cuda:{args.cuda_device}")
+            memb.to(device)
             memb.eval()
 else:
     model = load_model_from_log_dir(args.model_dir)
     te_shots = np.load(os.path.join(args.model_dir, args.te_relative_path))
-    if args.cuda_device is not None:
-        model = model.to(f"cuda:{args.cuda_device}")
+    if device.type == "cuda":
+        model = model.to(device)
+        model.eval()
+    else:
         model.eval()
 
 
-# te_shots = np.load("/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar/0/te_shots.npy")
+# te_shots = np.load("/path/to/anonymized/models/example_step2/0/te_shots.npy")
 
 modelname = os.path.basename(args.model_dir)
 output_path = os.path.join("model_out", modelname)
@@ -119,14 +118,18 @@ data_dir = cfg['data_path']
 
 if args.use_model_cfg_data_module:
     # data_folder = cfg['data_module']['data_path'].split("/")[-1]
-    # if cfg['data_module']['data_path'].split("/")[1]!='zfsauton':
-    #     data_dir = os.path.join("/zfsauton/project/fusion/data/organized", data_folder)
+    # if cfg['data_module']['data_path'].split("/")[1] != "path":
+    #     data_dir = os.path.join("/path/to/anonymized/data", data_folder)
     #     cfg['data_module']['data_path'] = data_dir
+    cfg["data_module"]["num_workers"] = 0
+    cfg["data_module"]["pin_memory"] = False
     dataset = hydra.utils.instantiate(cfg['data_module'], _recursive_=False)
     remove_states=cfg.get("data_module").get("remove_states", [])
     remove_actuators=cfg.get("data_module").get("remove_actuators", [])
 
     print("**** SETTING THE VAL LOADER AS TEST LOADER ****")
+    dataset._num_workers = 0
+    dataset._pin_memory = False
     dataset.val_dataloader = dataset.test_dataloader
 else:
 
@@ -139,12 +142,18 @@ else:
 
     
 
-    # data_dir = "/home/scratch/rsonker/data/organized/noshape_gas_flattop_bmsinfo"
+    # data_dir = "/path/to/anonymized/data/noshape_gas_flattop_bmsinfo"
     data_dir = data_dir
 
     all_data = load_from_hdf5(os.path.join(data_dir, "full.hdf5"))
     te_idxs = [sn in te_shots for sn in all_data["shotnum"]]
-    te_data = {k: v[te_idxs] for k, v in all_data.items()}
+    te_data = {}
+    num_rows = len(all_data["shotnum"])
+    for key, value in all_data.items():
+        if hasattr(value, "shape") and len(value.shape) > 0 and value.shape[0] == num_rows:
+            te_data[key] = value[te_idxs]
+        else:
+            te_data[key] = value
     if args.is_rnn:
         dataset_class = KFoldSequenceFusionDataModule
     else:
@@ -166,6 +175,8 @@ else:
         remove_states=cfg.get("data_module").get("remove_states", []),
         remove_actuators=cfg.get("data_module").get("remove_actuators", []),
     )
+    dataset._num_workers = 0
+    dataset._pin_memory = False
 
 print("\n\n *************************** \n\n")
 # te_shots = te_shots[:5]
@@ -195,7 +206,7 @@ for memb in all_models:
         itr_preds = []
         with torch.no_grad():
             for batch in dataset.val_dataloader(): # NOTE VAL loader may be set as test loader right now depending on dataset selection
-                batch = [b.to(f"cuda:{args.cuda_device}") for b in batch]
+                batch = [b.to(device) for b in batch]
                 normed_batch = memb.normalizer.normalize_batch(batch)
                 if args.is_gaussian:
                     net_out = memb.get_net_out(normed_batch) #todo
@@ -214,7 +225,8 @@ for memb in all_models:
                     samples -= batch[0][..., :state_size]
                 if args.is_rnn:
                     samples = samples[:, args.warm_up :]
-                    samples = samples[batch[-1][:, args.warm_up :].squeeze().bool()]
+                    valid_mask = batch[-1][:, args.warm_up :].squeeze(-1).bool()
+                    samples = samples[valid_mask]
                 itr_preds.append(samples)
                 if fill_labels:
                     if args.convert_to_difference:
@@ -224,9 +236,7 @@ for memb in all_models:
                     label_to_append = label_to_append[:, args.warm_up :]
                     if args.is_rnn:
                         real_samples += int(torch.sum(batch[-1]))
-                        label_to_append = label_to_append[
-                            batch[-1][:, args.warm_up :].squeeze().bool()
-                        ]
+                        label_to_append = label_to_append[valid_mask]
                     else:
                         real_samples += batch[0].shape[0]
                     labels.append(label_to_append.cpu())

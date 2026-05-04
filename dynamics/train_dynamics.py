@@ -1,4 +1,9 @@
+"""
+Main file to use for training dynamics models.
+"""
+
 import os
+import sys
 
 import hydra
 from hydra.utils import get_original_cwd
@@ -15,8 +20,8 @@ from dynamics_toolbox.utils.storage.model_storage import (
     load_ensemble_from_parent_dir,
 )
 
-import fusion_control
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 os.environ["HYDRA_FULL_ERROR"] = "1"
 
 @hydra.main(

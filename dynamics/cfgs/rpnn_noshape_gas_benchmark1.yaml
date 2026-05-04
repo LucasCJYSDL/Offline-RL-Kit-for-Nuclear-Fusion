@@ -1,11 +1,10 @@
 experiment_name: "rpnn_noshape_gas_curriculum"
-# save_path: "/home/scratch/rsonker/ech/dynamics_models/rpnn_qrfe_all_gauss1params_v2_nllmse"
-# data_path: "/home/scratch/rsonker/ech/data/organized/noshape_qrfe_all_gauss1params_v2"
-save_path: "/home/scratch/jiayuc2/bao/dynamic_models/rpnn_noshape_gas_benchmark_synthesize_step1"
-#save_path: "/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_benchmark_step1"
-# data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_flattop_bmsinfo"
-#data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark"
-data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
+# save_path: "/path/to/anonymized/models/example_step1"
+# data_path: "/path/to/anonymized/data/example_dataset"
+save_path: "/path/to/anonymized/models/rpnn_noshape_gas_benchmark_synthesize_step1"
+# save_path: "/path/to/anonymized/models/example_baseline_step1"
+# data_path: "/path/to/anonymized/data/example_benchmark_dataset"
+data_path: "/path/to/anonymized/data/noshape_gas_benchmark_synthesized_all"
 
 logger: tensorboard
 cuda_device: 3
@@ -97,7 +96,7 @@ model:
         - "q_pca2"
 
 data_module:
-  _target_: fusion_control.dynamics.data_modules.kfold_sequence_data_module.KFoldSequenceFusionDataModule
+  _target_: dynamics.orig_kfold_sequence_data_module.KFoldSequenceFusionDataModule
   data_path: ${data_path}
   batch_size: 512 #64
   n_folds: 10
@@ -110,7 +109,7 @@ data_module:
   prop_validation: 0.05
   time_diff: 20
   bootstrap: True
-#   val_shot_nums_path:  '/zfsauton2/home/rsonker/organized/val_positive_ec.npy' # additional validation set
+#   val_shot_nums_path: "/path/to/anonymized/data/val_positive_ec.npy"  # additional validation set
 
 hydra:
     run:

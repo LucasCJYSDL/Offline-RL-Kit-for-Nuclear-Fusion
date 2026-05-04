@@ -16,10 +16,10 @@ from envs.utils.data_preprocess import get_raw_data
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
 
 
-RAW_DATA_DIR = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark"
-MODEL_GEN_DIR = "/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_step2"
-MODEL_HIDDEN_DIR = "/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_synthesize_step2"
-SYNTHESIZED_DATA_DIR = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_dymodel_all"
+RAW_DATA_DIR = "/path/to/anonymized/data/noshape_gas_benchmark"
+MODEL_GEN_DIR = "/path/to/anonymized/models/rpnn_noshape_gas_benchmark_step2"
+MODEL_HIDDEN_DIR = "/path/to/anonymized/models/rpnn_noshape_gas_benchmark_synthesize_step2"
+SYNTHESIZED_DATA_DIR = "/path/to/anonymized/data/noshape_gas_benchmark_synthesized_dymodel_all"
 ACTION_BOUND_FILE = "noshape_gas_flattop.yaml"
 STATE_BOUND_FILE = "noshape_gas_flattop.yaml"
 WARMUP_STEPS = 5
