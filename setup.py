@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 
 setup(
-    name="offline-rl-kit-for-nuclear-fusion",
+    name="offline-rl-fusion",
     version="0.1.0",
     description="Offline RL and fusion-control utilities with a D4RL-style import surface.",
     install_requires=[
@@ -27,7 +27,6 @@ setup(
         "tabulate>=0.9",
         "uncertainty-toolbox>=0.1.1",
         "dynamics-toolbox>=1.0.0",
-        "fusion-control>=1.0.0",
     ],
     packages=find_packages(
         include=[
