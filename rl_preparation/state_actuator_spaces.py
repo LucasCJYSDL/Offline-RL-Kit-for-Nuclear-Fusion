@@ -12,18 +12,18 @@ from envs.utils.rewards import ProfileTrackingReward, TrackingReward, ProfileTra
 
 # need to modify
 track_signals = [
-            #   "rotation_component1", 
-            #   "rotation_component2", 
-            #   "rotation_component3", 
-            #   "rotation_component4",
+              "rotation_component1", 
+              "rotation_component2", 
+              "rotation_component3", 
+              "rotation_component4",
             #   "dens_component1", 
             #   "dens_component2", 
             #   "dens_component3", 
             #   "dens_component4",
-            "temp_component1",
-            "temp_component2",
-            "temp_component3",
-            "temp_component4",
+            # "temp_component1",
+            # "temp_component2",
+            # "temp_component3",
+            # "temp_component4",
             # "betan_EFIT01"
             # "pres_EFIT01_component1",
             # "pres_EFIT01_component2",

@@ -239,7 +239,7 @@ class MOBILEPolicy(BasePolicy):
                 if not self._deteterministic_backup:
                     next_q -= self._alpha * next_log_probs
             target_q = (rewards - self._penalty_coef * penalty) + self._gamma * (1 - terminals) * next_q
-            target_q = torch.clamp(target_q, 0, None)
+            # target_q = torch.clamp(target_q, 0, None)
 
         critic_loss = ((qs - target_q) ** 2).mean()
         self.critics_optim.zero_grad()

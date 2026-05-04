@@ -13,7 +13,7 @@ from envs.utils.data_preprocess import get_raw_data, store_offlinerl_dataset
 #!!! what you need to specify
 #raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_flattop" # the raw data  #/zfsauton/project/fusion/data/organized/minimal_cakenn_v4_expand_cont0002_noq_fix
 #raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
-raw_data_dir= "/data/datasets/noshape_gas_benchmark_synthesized_dymodel_all"
+raw_data_dir= "/data/datasets/noshape_gas_benchmark_synthesized_dymodel_all_filter"
 #training_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
 #evaluation_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_step_two_logvar_final25" # the rpnn dynamics model for evaluation, which can be different from the training one #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final
 training_model_dir = "/data/models/rpnn_noshape_gas_benchmark_synthesize_step2" # "/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final25"# #/zfsauton/project/fusion/models/rpnn_minimal_cakenn_nll_mse_v4_exp0002_noq_fix_final #the rpnn dynamics model for training
