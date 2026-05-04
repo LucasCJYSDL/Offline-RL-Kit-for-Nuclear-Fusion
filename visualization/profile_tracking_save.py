@@ -36,7 +36,6 @@ ALGO_ACTOR_DEFAULTS = {
     "mcq": {"hidden_dims": [400, 400], "dropout_rate": 0.1},
     "mobile": {"hidden_dims": [256, 256]},
     "mopo": {"hidden_dims": [256, 256]},
-    "mppi": {"hidden_dims": [256, 256, 256]},
     "ppo": {"hidden_dims": [256, 256], "use_diag_gaussian": True,},
     "rambo": {"hidden_dims": [256, 256]},
     "rombrl": {"hidden_dims": [256, 256]},

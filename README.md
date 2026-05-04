@@ -140,12 +140,6 @@ python dynamics/reevaluate_dynamics.py --model_dir /path/to/trained_model
     python scripts/run_gcil.py --env profile_control --task rotation
     ```
 
-- As an alternative, we provide scripts to run planning algorithms on the learned dynamics and distill policy functions from the planning results, which can be run by:
-    ```bash
-    python scripts/run_mppi.py --env profile_control --task rotation
-    ```
-    - The current planning entry point is `run_mppi`.
-
 - The package now exposes a small convenience API:
   ```python
   import torch

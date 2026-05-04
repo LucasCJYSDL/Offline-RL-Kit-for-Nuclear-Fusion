@@ -58,7 +58,6 @@ offlinerlkit/nets/mlp.py
 offlinerlkit/nets/rnn.py
 offlinerlkit/nets/vae.py
 offlinerlkit/planner/__init__.py
-offlinerlkit/planner/mppi.py
 offlinerlkit/policy/__init__.py
 offlinerlkit/policy/base_policy.py
 offlinerlkit/policy/model_based/__init__.py
