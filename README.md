@@ -2,27 +2,35 @@
 
 ## Quick Start
 
-1. Clone this repository and install the environment from `environment.yml`:
+1. Download the benchmark dataset from [fusion-rl-benchmark](https://huggingface.co/datasets/Neurips-ED-submission-685/fusion-rl-benchmark) and the dynamics models from [fusion-rl-dynamics-model](https://huggingface.co/Neurips-ED-submission-685/fusion-rl-dynamics-model).
+
+2. Clone this repository and install the environment from `environment.yml`:
    ```bash
    conda env create -f environment.yml
    conda activate offline-rl-fusion
    ```
 
-2. Install this project in editable mode from the repo root:
+3. Install this project in editable mode from the repo root:
    ```bash
    pip install -e .
    ```
-   This installs the reusable library modules. Training and tuning entry points stay in the repository-level `scripts/` folder and are run from the source checkout rather than exposed as installed console commands.
+   This installs the reusable library modules. Training entry points stay in the repository-level `scripts/` folder and are run from the source checkout rather than exposed as installed console commands.
 
-3. If your data or model directories are not in the default `data/` and `models/` locations, set these environment variables before running the code:
+4. Clone and install [dynamics-toolbox](https://github.com/IanChar/dynamics-toolbox) in editable mode:
+   ```bash
+   git clone https://github.com/IanChar/dynamics-toolbox.git
+   cd dynamics-toolbox
+   pip install -e .
+   cd ..
+   ```
+
+5. If your data or model directories are not in the default `data/` and `models/` locations, set these environment variables before running the code:
    - `OFFLINERLKIT_DATA_ROOT`
    - `OFFLINERLKIT_RAW_DATA_DIR`
    - `OFFLINERLKIT_PROCESSED_DATA_DIR`
    - `OFFLINERLKIT_MODEL_ROOT`
    - `OFFLINERLKIT_TRAINING_MODEL_DIR`
    - `OFFLINERLKIT_EVALUATION_MODEL_DIR`
-
-- You need to download/clone the repo: [dynamics-toolbox](https://github.com/LucasCJYSDL/dynamics-toolbox). This toolbox is different from Ian's, as we have changed the rpnn class.
 
 ## Dynamics Modelling
 
@@ -51,7 +59,7 @@
     ```
     - Other available entry points include `run_cql`, `run_iql`, `run_edac`, `run_mcq`, `run_td3bc`, `run_combo`, `run_mobile`, `run_mopo`, `run_bambrl`, `run_rambo`, and `run_rombrl`.
     - Pick the task that matches the data you prepared, for example `temp`, `rotation`, `dens`, `pres`, `q`, or `betan`.
-    - Benchmark defaults are stored in `offlinerlkit/configs/benchmark_configs.json` as a `task × algorithm` table.
+    - Benchmark defaults are stored in `offlinerlkit/configs/benchmark_configs.json` as a `task x algorithm` table.
     - Each training script auto-loads the matching parameter block for the task and algorithm you request. Command-line flags still override the benchmark defaults when you want to run ablations or ad hoc checks.
 
 - You can run a goal-conditioned imitation learning algorithm by:
