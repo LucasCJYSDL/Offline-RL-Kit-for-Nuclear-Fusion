@@ -19,10 +19,10 @@ data_root = _resolve_path("OFFLINERLKIT_DATA_ROOT", REPO_ROOT / "data")
 raw_data_dir = _resolve_path("OFFLINERLKIT_RAW_DATA_DIR", data_root / "raw")
 processed_data_dir = _resolve_path("OFFLINERLKIT_PROCESSED_DATA_DIR", data_root / "processed")
 model_root = _resolve_path("OFFLINERLKIT_MODEL_ROOT", REPO_ROOT / "models")
-training_model_dir = _resolve_path("OFFLINERLKIT_TRAINING_MODEL_DIR", model_root / "training")
+training_model_dir = _resolve_path("OFFLINERLKIT_TRAINING_MODEL_DIR", model_root / "train")
 evaluation_model_dir = _resolve_path(
     "OFFLINERLKIT_EVALUATION_MODEL_DIR",
-    training_model_dir,
+    model_root / "val"
 )
 log_root = _resolve_path("OFFLINERLKIT_LOG_DIR", REPO_ROOT / "logs")
 tune_root = _resolve_path("OFFLINERLKIT_TUNE_DIR", log_root / "tune")
