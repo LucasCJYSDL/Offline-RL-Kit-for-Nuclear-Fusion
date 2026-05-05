@@ -61,8 +61,8 @@ pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 \
  in editable mode:
    ```bash
    git clone https://github.com/IanChar/dynamics-toolbox.git
-   git branch rohit-tm
    cd dynamics-toolbox
+   git branch rohit-tm
    pip install -e .
    cd ..
    ```
