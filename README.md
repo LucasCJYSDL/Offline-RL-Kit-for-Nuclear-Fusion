@@ -57,8 +57,11 @@ pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 \
 
 ### 5. Clone and install third party 
 
-[dynamics-toolbox] in editable mode:
+[dynamics-toolbox](https://github.com/IanChar/dynamics-toolbox) in editable mode:
+ in editable mode:
    ```bash
+   git clone https://github.com/IanChar/dynamics-toolbox.git
+   git branch rohit-tm
    cd dynamics-toolbox
    pip install -e .
    cd ..
