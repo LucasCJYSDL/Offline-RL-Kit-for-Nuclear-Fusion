@@ -20,7 +20,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/export/pgs/fuyang/result_4",
+                       default="/export/pgs/fuyang/result_52",
                        help="Base directory for saving all results")
     # parser.add_argument("--save_base_dir", type=str, 
     #                    default="/home/scratch/jiayuc2/bao/Eval_optuna/rotation",
@@ -33,13 +33,13 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control_new")#profile_control  profile_control_new
-    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="pres_EFIT01", help="Targets to track") 
     parser.add_argument("--test", action="store_true", help="Use test split instead of validation split")
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/dens_network/dens_ppo_seed1/lr0.0003_steps2048_batch1024_epochs20_gamma0.952_gaelambda0.98_clip0.148_ent0.0067_vf1_maxgrad0.5_timesteps3000000_pol250x250_val250x250") # need to change
     # parser.add_argument("--actor_path",type=str, default="/home/scratch/jiayuc2/rl_out_optimized_296/prof_tracking_q_kth_target_flattop_subset_boots/ppo_prof_control_zipfit_dens_optimized/policy")
-    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/rotation/mobile&penalty_coef=1.5&rollout_length=1/seed_1&timestamp_26-0429-084743")
+    parser.add_argument("--actor_path",type=str, default="/export/pgs/fuyang/log_syn/pres_EFIT01/mobile&penalty_coef=0.5&rollout_length=1/seed_1&timestamp_26-0501-091116")
     parser.add_argument("--il_actor", type=bool, default=False, help="Is this an imitation learning actor?")
     parser.add_argument("--stochastic_actor", type=bool, default=True, help="Is this a stochatic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs='*', default=[256,256], help="Hidden dimensions of the actor network") # you can get this in corresponding rl scripts
@@ -306,7 +306,7 @@ def run(args=get_args()) -> None:
         args.obs_dim = offline_data['observations'].shape[1]
         args.action_dim = offline_data['actions'].shape[1]
     args.max_action = 1.0
-
+    print(f"Observation dimension: {args.obs_dim}, Action dimension: {args.action_dim}")
     # set seeds
     random.seed(args.seed)
     np.random.seed(args.seed)

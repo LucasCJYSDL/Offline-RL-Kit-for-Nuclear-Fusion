@@ -12,10 +12,10 @@ from envs.utils.rewards import ProfileTrackingReward, TrackingReward, ProfileTra
 
 # need to modify
 track_signals = [
-              "rotation_component1", 
-              "rotation_component2", 
-              "rotation_component3", 
-              "rotation_component4",
+            #   "rotation_component1", 
+            #   "rotation_component2", 
+            #   "rotation_component3", 
+            #   "rotation_component4",
             #   "dens_component1", 
             #   "dens_component2", 
             #   "dens_component3", 
@@ -25,8 +25,8 @@ track_signals = [
             # "temp_component3",
             # "temp_component4",
             # "betan_EFIT01"
-            # "pres_EFIT01_component1",
-            # "pres_EFIT01_component2",
+            "pres_EFIT01_component1",
+            "pres_EFIT01_component2",
             # "q_EFIT01_component1",
             # "q_EFIT01_component2"
             ]
@@ -66,14 +66,14 @@ track_signals = [
 #                  "dens_component4" ]
 
 # temperature task
-obs_in_use=[  "temp_component1",
-            "temp_component2",
-            "temp_component3",
-            "temp_component4" ]
+# obs_in_use=[  "temp_component1",
+#             "temp_component2",
+#             "temp_component3",
+#             "temp_component4" ]
 
 # pres task
-# obs_in_use=[  "pres_EFIT01_component1",
-#             "pres_EFIT01_component2"]
+obs_in_use=[  "pres_EFIT01_component1",
+            "pres_EFIT01_component2"]
 
 # q task
 # obs_in_use=[  "q_EFIT01_component1",
@@ -106,22 +106,22 @@ action_space = [
 #     PTerm(signal_name="dens_component4", target_idx=0),
 # ]
 
-computed_obs_in_use = [
-    PTerm(signal_name="temp_component1", target_idx=0),
-    PTerm(signal_name="temp_component2", target_idx=0),
-    PTerm(signal_name="temp_component3", target_idx=0),
-    PTerm(signal_name="temp_component4", target_idx=0),
-]
+# computed_obs_in_use = [
+#     PTerm(signal_name="temp_component1", target_idx=0),
+#     PTerm(signal_name="temp_component2", target_idx=0),
+#     PTerm(signal_name="temp_component3", target_idx=0),
+#     PTerm(signal_name="temp_component4", target_idx=0),
+# ]
 
 # computed_obs_in_use = [
 #     PTerm(signal_name="betan_EFIT01", target_idx=0),
 # ]
 
 
-# computed_obs_in_use = [
-#     PTerm(signal_name="pres_EFIT01_component1", target_idx=0),
-#     PTerm(signal_name="pres_EFIT01_component2", target_idx=0),
-# ]
+computed_obs_in_use = [
+    PTerm(signal_name="pres_EFIT01_component1", target_idx=0),
+    PTerm(signal_name="pres_EFIT01_component2", target_idx=0),
+]
 
 # computed_obs_in_use = [
 #     PTerm(signal_name="q_EFIT01_component1", target_idx=0),
@@ -172,7 +172,7 @@ actuator_bounder = CompositeActuatorBounder(bounders=[beam_bounder])
 # rotation and dens task
 reward_function = ProfileTrackingReward(
         unnormalize=False,
-        profile_name=["temp"],#dens #pres_EFIT01
+        profile_name=["pres_EFIT01"],#dens #pres_EFIT01
         square_costs=True,
         track_signals=track_signals,
     )
