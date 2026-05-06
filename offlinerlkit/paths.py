@@ -16,7 +16,7 @@ def _ensure_dir(path: Path) -> Path:
 
 
 data_root = _resolve_path("OFFLINERLKIT_DATA_ROOT", REPO_ROOT / "data")
-raw_data_dir = _resolve_path("OFFLINERLKIT_RAW_DATA_DIR", data_root / "raw")
+raw_data_dir = _resolve_path("OFFLINERLKIT_RAW_DATA_DIR", data_root / "processed")
 processed_data_dir = _resolve_path("OFFLINERLKIT_PROCESSED_DATA_DIR", data_root / "processed")
 model_root = _resolve_path("OFFLINERLKIT_MODEL_ROOT", REPO_ROOT / "models")
 training_model_dir = _resolve_path("OFFLINERLKIT_TRAINING_MODEL_DIR", model_root / "train")
