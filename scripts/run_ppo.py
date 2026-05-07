@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument("--algo-name", type=str, default="ppo")
     
 
-    # parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/rl_out_off/test_bao/test", 
+    # parser.add_argument("--output-dir", type=str, default="/path/to/output_dir",
     #                    help="Specify output directory path, use default path if not specified")
     # parser.add_argument("--output-dir", type=str, default=None, 
     #                     help="Specify output directory path, use default path if not specified")

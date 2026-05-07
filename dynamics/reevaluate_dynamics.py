@@ -40,27 +40,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--model_dir",
     type=str,
-    # default = "/home/scratch/rsonker/ech/dynamics_models/rpnn_noshape_gas_step_two_logvar"
-    # default = "/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_new_shots_step_two_nll_bmsinfo",
-    # default = '/zfsauton/project/fusion/models/rpnn_noshape_gas_benchmark_step2',
-    # default= "/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_bms_step_one_mse_1_red_v2",
-    # default= "/zfsauton/project/fusion/models/rpnn_noshape_gas_new_shots_step_two_nll_bmsinfo",
-    # default= "/zfsauton/project/fusion/models/rpnn_minimal_zipfit_cont001_noq_final",
-    # default = "/zfsauton/project/fusion/ndeka/models_out/minimal_cakenn_v4_expand_cont002_noq"
-    default = "/home/scratch/jiayuc2/bao/dynamic_models/rpnn_noshape_gas_benchmark_synthesize_step2"
+    default="/path/to/trained_model",
 )
-# default = '/home/scratch/rsonker/FusionControl/dynamics_out/ijcnn/ijcnn_model')
-# getting the data from the model cfg
-# parser.add_argument(  
-#     "--data_dir",
-#     type=str,
-#     # default='./data/highbetap/v2/25ms/difference_subset')
-#     # default='./data/v7/profile/2022-05-10')
-#     # default ='/home/scratch/rsonker/FusionControl/data/organised/aug2023')
-#     # default = '/home/scratch/rsonker/FusionControl/data/2023-02-01/wshapecontrol')
-#     # default="/home/scratch/rsonker/FusionControl/data/2023-02-01/wshapecontrol",
-#     default = "/home/scratch/rsonker/ech/data/organized/noshape_qrfe_tm_1_v2",
-# )
+# Example path placeholders:
+# model_dir="/path/to/trained_model"
+# data_dir="/path/to/data_dir"
 parser.add_argument("--samples_per_pt", type=int, default=1) # 30 only when sampling
 parser.add_argument("--convert_to_difference", type=int, default=0)
 parser.add_argument("--is_ensemble", type=int, default=1)
@@ -70,7 +54,7 @@ parser.add_argument("--do_uct", default=0, type=int)
 parser.add_argument("--warm_up", default=0, type=int)
 parser.add_argument("--cuda_device", default=3, type=int)
 parser.add_argument("--use_model_cfg_data_module", type=int, default=1)
-parser.add_argument("--provide_model_for_te_shots", type=str, default="/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_bms_step_one_mse_1_red")
+parser.add_argument("--provide_model_for_te_shots", type=str, default="/path/to/output_dir")
 parser.add_argument(
     "--te_relative_path",
     type=str,
@@ -102,7 +86,7 @@ else:
         model.eval()
 
 
-# te_shots = np.load("/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar/0/te_shots.npy")
+# te_shots = np.load("/path/to/output_dir/0/te_shots.npy")
 
 modelname = os.path.basename(args.model_dir)
 output_path = os.path.join("model_out", modelname)
@@ -120,7 +104,7 @@ data_dir = cfg['data_path']
 if args.use_model_cfg_data_module:
     # data_folder = cfg['data_module']['data_path'].split("/")[-1]
     # if cfg['data_module']['data_path'].split("/")[1]!='zfsauton':
-    #     data_dir = os.path.join("/zfsauton/project/fusion/data/organized", data_folder)
+    #     data_dir = os.path.join("/path/to/data_dir", data_folder)
     #     cfg['data_module']['data_path'] = data_dir
     dataset = hydra.utils.instantiate(cfg['data_module'], _recursive_=False)
     remove_states=cfg.get("data_module").get("remove_states", [])
@@ -139,7 +123,7 @@ else:
 
     
 
-    # data_dir = "/home/scratch/rsonker/data/organized/noshape_gas_flattop_bmsinfo"
+    # data_dir = "/path/to/data_dir"
     data_dir = data_dir
 
     all_data = load_from_hdf5(os.path.join(data_dir, "full.hdf5"))

@@ -44,7 +44,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=0)
 
-    # parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+    # parser.add_argument("--base-dir", type=str, default="/path/to/log_dir")
     parser.add_argument("--base-dir", type=str, default=str(log_root))
     apply_benchmark_defaults(parser, "mcq", default_task="rotation")
     return parser.parse_args()
@@ -144,7 +144,7 @@ def train(args=None):
     log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
                                  record_params=record_params,
                                  base_dir=args.base_dir)
-    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_100_untuned")
+    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/path/to/output_dir")
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",

@@ -14,3 +14,12 @@ visualization/saved_data
 noshape_gas_flattop_synthesized_rl100_il13/
 src/
 model_out/
+
+# Native / Cython build artifacts
+build/
+*.so
+*.pyd
+*.dll
+*.dylib
+*.o
+offlinerlkit/utils/ctree/search_tree.cpp

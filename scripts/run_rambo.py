@@ -221,7 +221,7 @@ def train(args=None):
 
     # log
     #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
-    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), base_dir="/path/to/output_dir")
     log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
                                  record_params=["rollout_length", "adv_weight"],
                                  base_dir=args.base_dir)

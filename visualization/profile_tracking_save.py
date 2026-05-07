@@ -17,6 +17,7 @@ from visualization.plotter import (
 
 
 DEFAULT_ACTUATORS_TO_PLOT = ["pinj", "tinj", "gasA", "ech_pwr_total"]
+DEFAULT_ACTOR_PATH = "/path/to/actor_run"
 SCRIPT_DEFAULT_ACTOR_SETTINGS = {
     "il_actor": False,
     "stochastic_actor": True,
@@ -71,7 +72,12 @@ def get_args():
     parser.add_argument("--cuda_id", type=int, default=5, help="CUDA device ID. Use -1 to force CPU.")
     parser.add_argument("--env", type=str, default="profile_control_new")
     parser.add_argument("--task", type=str, default="temp", help="Targets to track")
-    parser.add_argument("--actor_path", type=str, default="/export/pgs/fuyang/log_syn/temp/combo&cql_weight=10&rollout_length=7/seed_1&timestamp_26-0410-225124")
+    parser.add_argument(
+        "--actor_path",
+        type=str,
+        default=DEFAULT_ACTOR_PATH,
+        help="Path to the saved actor run directory",
+    )
     parser.add_argument("--run_name", type=str, default=None, help="Optional human-readable name for a run or algorithm")
     parser.add_argument("--il_actor", type=_str2bool, default=False, help="Is this an imitation-learning actor?")
     parser.add_argument("--stochastic_actor", type=_str2bool, default=True, help="Is this a stochastic actor?")
@@ -123,6 +129,11 @@ def _set_seed(seed: int):
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+
+
+def _validate_actor_path(args):
+    if not args.actor_path or args.actor_path == DEFAULT_ACTOR_PATH:
+        raise ValueError("Please set --actor_path to your saved actor run directory.")
 
 
 def _resolve_device(args):
@@ -443,6 +454,7 @@ def _reconstruct_profile_save_profiles(args, env, sa_processor, target_quan_arra
 
 
 def run_profile_mode(args):
+    _validate_actor_path(args)
     _resolve_device(args)
     _apply_actor_defaults_from_path(args)
     offline_data, sa_processor, env, _ = get_rl_data_envs(

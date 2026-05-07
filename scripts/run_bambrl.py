@@ -202,7 +202,7 @@ def train(args=None):
 
     # log
     #log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length", "real_ratio"])
-    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length", "real_ratio"], base_dir="/home/scratch/jiayuc2/bao/Training_untuned")
+    #log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args), record_params=["penalty_coef", "rollout_length", "real_ratio"], base_dir="/path/to/output_dir")
     record_params = ["rollout_length", "penalty_coef", "use_ba", "search_alpha"]
     log_dirs = make_log_dirs_new(args.task, args.algo_name, args.seed, vars(args),
                                  record_params=record_params,
