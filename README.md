@@ -3,7 +3,7 @@
 ## Quick Start
 
 ### 1. Download data and models
-- Dataset: [fusion-rl-benchmark](https://huggingface.co/datasets/Neurips-ED-submission-685/fusion-rl-benchmark) and the dynamics models from 
+- Dataset: [fusion-rl-benchmark](https://huggingface.co/datasets/Neurips-ED-submission-685/fusion-rl-benchmark/tree/main/processed).
 - Models: [fusion-rl-dynamics-model](https://huggingface.co/Neurips-ED-submission-685/fusion-rl-dynamics-model).
    After extracting the downloaded files, the repository is expected to look like:
    ```text

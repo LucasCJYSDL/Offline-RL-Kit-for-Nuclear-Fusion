@@ -68,7 +68,7 @@ def get_args():
     # Shared evaluation settings
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
     parser.add_argument("--seeds", type=int, nargs="*", default=list(range(10)), help="Seeds used by profile mode")
-    parser.add_argument("--cuda_id", type=int, default=5, help="CUDA device ID")
+    parser.add_argument("--cuda_id", type=int, default=5, help="CUDA device ID. Use -1 to force CPU.")
     parser.add_argument("--env", type=str, default="profile_control_new")
     parser.add_argument("--task", type=str, default="temp", help="Targets to track")
     parser.add_argument("--actor_path", type=str, default="/export/pgs/fuyang/log_syn/temp/combo&cql_weight=10&rollout_length=7/seed_1&timestamp_26-0410-225124")
@@ -76,7 +76,12 @@ def get_args():
     parser.add_argument("--il_actor", type=_str2bool, default=False, help="Is this an imitation-learning actor?")
     parser.add_argument("--stochastic_actor", type=_str2bool, default=True, help="Is this a stochastic actor?")
     parser.add_argument("--hidden_dims", type=int, nargs="*", default=[256, 256, 256], help="Hidden dimensions of the actor network")
-    parser.add_argument("--deterministic_mode", action="store_true", help="Whether to make the actor deterministic")
+    parser.add_argument(
+        "--deterministic_mode",
+        type=_str2bool,
+        default=SCRIPT_DEFAULT_ACTOR_SETTINGS["deterministic_mode"],
+        help="Whether to make the actor deterministic",
+    )
     parser.add_argument("--use_diag_gaussian", action="store_true", help="Use DiagGaussian instead of TanhDiagGaussian")
     parser.add_argument("--dropout_rate", type=float, default=None, help="Dropout rate for actor backbone")
     parser.add_argument("--test", action="store_true", default=False, help="Use the test split; default is validation split")
@@ -114,8 +119,31 @@ def _set_seed(seed: int):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+
+def _resolve_device(args):
+    if args.cuda_id < 0:
+        args.device = torch.device("cpu")
+        print("Using device: cpu")
+        return args.device
+
+    if not torch.cuda.is_available():
+        args.device = torch.device("cpu")
+        print("CUDA is not available, falling back to CPU.")
+        return args.device
+
+    device_count = torch.cuda.device_count()
+    if args.cuda_id >= device_count:
+        raise ValueError(f"Requested cuda_id={args.cuda_id}, but only {device_count} CUDA device(s) are available.")
+
+    torch.cuda.set_device(args.cuda_id)
+    args.device = torch.device(f"cuda:{args.cuda_id}")
+    print(f"Using device: {args.device} ({torch.cuda.get_device_name(args.cuda_id)})")
+    return args.device
 
 
 def _set_model_dimensions(args, offline_data):
@@ -415,7 +443,7 @@ def _reconstruct_profile_save_profiles(args, env, sa_processor, target_quan_arra
 
 
 def run_profile_mode(args):
-    args.device = torch.device(f"cuda:{args.cuda_id}" if torch.cuda.is_available() else "cpu")
+    _resolve_device(args)
     _apply_actor_defaults_from_path(args)
     offline_data, sa_processor, env, _ = get_rl_data_envs(
         args.env,
