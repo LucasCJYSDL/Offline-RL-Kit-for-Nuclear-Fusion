@@ -1382,7 +1382,7 @@
       "rollout_freq": 1000,
       "rollout_batch_size": 50000,
       "rollout_length": 1,
-      "penalty_coef": 1.5,
+      "penalty_coef": 0.5,
       "num_samples": 10,
       "model_retain_epochs": 5,
       "real_ratio": 0.05,
