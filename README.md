@@ -75,8 +75,8 @@ To train the dynamics models yourself:
 
 ### 1. Download the training dataset
 
-Download the files under the `raw/` folder from:
-https://huggingface.co/datasets/Neurips-ED-submission-685/fusion-rl-benchmark/tree/main/raw
+Download the files under the `processed/` folder from:
+https://huggingface.co/datasets/Neurips-ED-submission-685/fusion-rl-benchmark/tree/main/processed
 
 ### 2. Prepare the training configuration
 
@@ -85,7 +85,7 @@ The training configurations are provided in:
 - `dynamics/cfgs/rpnn_noshape_gas_benchmark2.yaml`
 
 Update the configuration files so that:
-- `data_path` points to the downloaded dataset directory;
+- `data_path` points to the downloaded `processed/` dataset directory;
 - `save_path` points to the output directory for the trained model;
 - in `rpnn_noshape_gas_benchmark2.yaml`, `model.load_dir` points to the directory produced by the first-stage training.
 
