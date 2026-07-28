@@ -32,6 +32,25 @@ class PlanningWrapper:
     def seed(self, seed):
         self.core_env.seed(seed)
 
+    def sync_runtime_state_from(self, other):
+        source_env = other.core_env if isinstance(other, PlanningWrapper) else other
+        for attr in (
+            'ref_shot_id',
+            'tracking_states',
+            'tracking_pre_actions',
+            'tracking_actions',
+            'cur_shot_time_limit',
+            'cur_time',
+            'pre_action',
+            'cur_state',
+        ):
+            if not hasattr(source_env, attr):
+                continue
+            value = getattr(source_env, attr)
+            if torch.is_tensor(value):
+                value = value.detach().clone()
+            setattr(self.core_env, attr, value)
+
 #ppo
 class GymnasiumWrapper(gym.Env):
     """

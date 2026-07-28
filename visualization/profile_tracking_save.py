@@ -20,7 +20,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Trajectory evaluation and data saving arguments")
 
     parser.add_argument("--save_base_dir", type=str, 
-                       default="/export/pgs/fuyang/result_411",
+                       default="/export/ra/baohaoming/fusion/profile/rotation",
                        help="Base directory for saving all results")
     # parser.add_argument("--save_base_dir", type=str, 
     #                    default="/home/scratch/jiayuc2/bao/Eval_optuna/rotation",
@@ -33,7 +33,7 @@ def get_args():
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control_new")#profile_control  profile_control_new
-    parser.add_argument("--task", type=str, default="temp", help="Targets to track") 
+    parser.add_argument("--task", type=str, default="rotation", help="Targets to track") 
     parser.add_argument("--test", action="store_true", help="Use test split instead of validation split")
     # controller settings, of which the core is an NN actor
     # parser.add_argument("--actor_path", type=str, default="/home/scratch/jiayuc2/rl_out_off/rotation_ppo_seed601/lr0.0001_steps4096_batch512_epochs20_gamma0.99_gaelambda0.95_clip0.2_ent0.0_vf1_maxgrad0.5_hidden250x250", help="Path to the actor checkpoint")

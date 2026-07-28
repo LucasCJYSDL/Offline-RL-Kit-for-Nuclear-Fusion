@@ -1,0 +1,118 @@
+experiment_name: "tpnn_noshape_gas_benchmark_base"
+save_path: ???
+data_path: "/data/datasets/noshape_gas_benchmark_synthesized_all"
+
+logger: tensorboard
+cuda_device: 3
+seed: 0
+normalization: "standardize"
+nblocks: 5
+
+trainer:
+  max_epochs: 1000
+  gpus: 1
+  # A physical batch of 512 with two accumulated batches gives an effective
+  # batch size of 1024, matching the FusionControl two-stage TPNN setup.
+  accumulate_grad_batches: 2
+
+early_stopping:
+  patience: 100
+  min_delta: 0.0
+  monitor: "val/loss"
+  mode: "min"
+
+model:
+  _target_: dynamics_toolbox.models.pl_models.sequential_models.tpnn.TPNN
+  warm_up_period: 2
+  encode_dim: 512
+  num_transformer_blocks: 2
+  num_heads: 8
+  block_size: 225
+  dropout: 0.2
+  learning_rate: 3e-4
+  weight_decay: 1e-3
+  loss_fn_str: "NLL+MSE"
+  mse_wt: 1.0
+  nll_wt: 1.0
+  use_layer_norm: true
+  use_positional_encoding: true
+  load_dir: null
+  freeze_all_but: null
+  encoder_cfg:
+    _target_: dynamics_toolbox.models.pl_models.mlp.MLP
+    num_layers: 1
+    layer_size: 512
+    hidden_activation: "relu"
+  pnn_decoder_cfg:
+    _target_: dynamics_toolbox.models.pl_models.pnn.PNN
+    encoder_output_dim: 128
+    logvar_lower_bound: -10
+    logvar_upper_bound: 0.5
+    encoder_cfg:
+      _target_: dynamics_toolbox.models.pl_models.residual_mlp_blocks.ResidualMLPBlocks
+      embed_dim: 512
+      num_layers_per_block: 1
+      num_blocks: ${nblocks}
+      hidden_activation: "relu"
+    mean_net_cfg:
+      _target_: dynamics_toolbox.models.pl_models.mlp.MLP
+      num_layers: 0
+      layer_size: 128
+      hidden_activation: "relu"
+    logvar_net_cfg:
+      _target_: dynamics_toolbox.models.pl_models.mlp.MLP
+      num_layers: 0
+      layer_size: 128
+      hidden_activation: "relu"
+  # These 26 labels match the 26 columns in this dataset's next_states array.
+  dim_name_map:
+    - "BetaN"
+    - "dssdenest"
+    - "li"
+    - "n1rms"
+    - "vloop"
+    - "wmhd"
+    - "temp_pca1"
+    - "temp_pca2"
+    - "temp_pca3"
+    - "temp_pca4"
+    - "itemp_pca1"
+    - "itemp_pca2"
+    - "itemp_pca3"
+    - "itemp_pca4"
+    - "dens_pca1"
+    - "dens_pca2"
+    - "dens_pca3"
+    - "dens_pca4"
+    - "rotation_pca1"
+    - "rotation_pca2"
+    - "rotation_pca3"
+    - "rotation_pca4"
+    - "pres_pca1"
+    - "pres_pca2"
+    - "q_pca1"
+    - "q_pca2"
+
+data_module:
+  _target_: fusion_control.dynamics.data_modules.kfold_sequence_data_module.KFoldSequenceFusionDataModule
+  data_path: ${data_path}
+  batch_size: 512
+  n_folds: 10
+  te_fold: 10
+  pin_memory: true
+  min_shot_amt: 4
+  shot_train_length: 225
+  num_workers: 8
+  train_from_start_only: true
+  prop_validation: 0.05
+  time_diff: 20
+  # A single TPNN should use the complete training split rather than an
+  # ensemble-member bootstrap resample.
+  bootstrap: false
+  # Keeping this tied to the run seed guarantees identical Stage-1/Stage-2
+  # train/validation/test splits.
+  seed: ${seed}
+
+hydra:
+  run:
+    dir: ${save_path}/${seed}

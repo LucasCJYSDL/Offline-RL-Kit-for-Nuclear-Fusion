@@ -70,18 +70,20 @@ def get_args():
     parser.add_argument("--test_search", type=bool, default=True)
 
     #!!! what you need to specify
-    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
+    parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--search_with_hidden_state", type=bool, default=False) # when you do MCTS, whether to use the hidden state of the rpnn dynamics model; time-costly if true
     parser.add_argument("--cuda_id", type=int, default=0)
 
-    parser.add_argument("--base-dir", type=str, default="/zfsauton2/home/jiayuc2/bao/synthesize_test_all/log")
+    parser.add_argument("--base-dir", type=str, default="/export/ra/baohaoming/fusion/rotation/log")
 
     return parser.parse_args()
 
 
-def train(args=get_args()):    
+def train(args=None):    
+    if args is None:
+        args = get_args() 
     if args.use_search:
         args.algo_name += '_mcts'
     if args.use_sl:

@@ -1,17 +1,20 @@
 experiment_name: "rpnn_noshape_gas_curriculum"
 # save_path: "/home/scratch/rsonker/ech/dynamics_models/rpnn_qrfe_all_gauss1params_v2_nllmse"
 # data_path: "/home/scratch/rsonker/ech/data/organized/noshape_qrfe_all_gauss1params_v2"
-save_path: "/home/scratch/jiayuc2/bao/dynamic_models/rpnn_noshape_gas_benchmark_synthesize_step1"
+
 #save_path: "/home/scratch/rsonker/dynamics_models/rpnn_noshape_gas_benchmark_step1"
 # data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_flattop_bmsinfo"
 #data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark"
+
+
+save_path: "/home/scratch/jiayuc2/bao/dynamic_models/rpnn_noshape_gas_benchmark_synthesize_step1"
 data_path: "/zfsauton/project/fusion/data/organized/noshape_gas_benchmark_synthesized_all"
+
 
 logger: tensorboard
 cuda_device: 3
 seed: 0
 normalization: "standardize"
-warm_up_period: 2
 nblocks: 5
 trainer:
     max_epochs: 1000
@@ -23,6 +26,7 @@ early_stopping:
     mode: 'min'
 model:
     _target_: dynamics_toolbox.models.pl_models.sequential_models.rpnn.RPNN
+    warm_up_period: 2
     encode_dim: 512
     rnn_num_layers: 1
     rnn_hidden_size: 256

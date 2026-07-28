@@ -64,32 +64,32 @@ class MFPolicyTrainer:
                 self.lr_scheduler.step()
             
             
-            # if e > self._epoch - 10:
-            #     eval_info = self._evaluate()
+            if e > self._epoch - 10:
+                eval_info = self._evaluate()
                 
-            #     ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
-            #     ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
-            #     last_10_performance.append(ep_reward_mean)
-            #     self.logger.logkv("eval/episode_reward", ep_reward_mean)
-            #     self.logger.logkv("eval/episode_reward_std", ep_reward_std)
-            #     self.logger.logkv("eval/episode_length", ep_length_mean)
-            #     self.logger.logkv("eval/episode_length_std", ep_length_std)
+                ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
+                ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
+                last_10_performance.append(ep_reward_mean)
+                self.logger.logkv("eval/episode_reward", ep_reward_mean)
+                self.logger.logkv("eval/episode_reward_std", ep_reward_std)
+                self.logger.logkv("eval/episode_length", ep_length_mean)
+                self.logger.logkv("eval/episode_length_std", ep_length_std)
             
             
-            # self.logger.set_timestep(num_timesteps)
-            # self.logger.dumpkvs()
-            
-            
-            eval_info = self._evaluate()
-            ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
-            ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
-            last_10_performance.append(ep_reward_mean)
-            self.logger.logkv("eval/episode_reward", ep_reward_mean)
-            self.logger.logkv("eval/episode_reward_std", ep_reward_std)
-            self.logger.logkv("eval/episode_length", ep_length_mean)
-            self.logger.logkv("eval/episode_length_std", ep_length_std)
             self.logger.set_timestep(num_timesteps)
             self.logger.dumpkvs()
+            
+            
+            # eval_info = self._evaluate()
+            # ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
+            # ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
+            # last_10_performance.append(ep_reward_mean)
+            # self.logger.logkv("eval/episode_reward", ep_reward_mean)
+            # self.logger.logkv("eval/episode_reward_std", ep_reward_std)
+            # self.logger.logkv("eval/episode_length", ep_length_mean)
+            # self.logger.logkv("eval/episode_length_std", ep_length_std)
+            # self.logger.set_timestep(num_timesteps)
+            # self.logger.dumpkvs()
 
             # save checkpoint
             torch.save(self.policy.state_dict(), os.path.join(self.logger.checkpoint_dir, "policy.pth"))

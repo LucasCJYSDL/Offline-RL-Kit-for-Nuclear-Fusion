@@ -99,7 +99,7 @@ model:
         - "q_pca2"
 
 data_module:
-  _target_: fusion_control.dynamics.data_modules.kfold_sequence_data_module.KFoldSequenceFusionDataModule
+  _target_: dynamics.orig_kfold_sequence_data_module.KFoldSequenceFusionDataModule
   data_path: ${data_path}
   batch_size: 512 #64
   n_folds: 10

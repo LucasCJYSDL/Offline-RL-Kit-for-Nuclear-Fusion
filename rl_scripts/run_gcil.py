@@ -39,7 +39,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=5)
 
-    parser.add_argument("--base-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_last_results_bao/log")
+    parser.add_argument("--base-dir", type=str, default="/export/ra/baohaoming/fusion/rotation/log")
 
     return parser.parse_args()
 
@@ -90,7 +90,9 @@ def GCIL(args, offline_data, env, logger): # this function is shared by some oth
     policy_trainer.train()
 
 
-def train(args=get_args()):
+def train(args=None):    
+    if args is None:
+        args = get_args()
     # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     offline_data, _, env, _ = get_rl_data_envs(args.env, args.task, args.device, is_il=True,is_val=True)

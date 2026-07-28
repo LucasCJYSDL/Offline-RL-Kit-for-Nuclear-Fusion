@@ -2,8 +2,10 @@ import argparse
 import random
 import json
 import os
+import shutil
 import sys
 import tempfile
+import threading
 from datetime import datetime
 from typing import Dict, Any
 import numpy as np
@@ -27,25 +29,25 @@ def get_tuning_args():
     # Environment settings
     parser.add_argument("--env", type=str, default="profile_control_new",
                        help="Environment name")
-    parser.add_argument("--task", type=str, default="pres_EFIT01",
+    parser.add_argument("--task", type=str, default="dens",
                        help="Task name")
     parser.add_argument("--cuda-id", type=int, default=7,
                        help="Default CUDA device ID (used if --gpu-ids not specified)")
-    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[3,4,5],
+    parser.add_argument("--gpu-ids", type=int, nargs='+', default=[4,5,6,7],
                        help="List of GPU IDs to use for parallel trials (e.g., --gpu-ids 0 1 2 3)")
     parser.add_argument("--seed", type=int, default=1,
                        help="Base random seed")
     
     # Optuna settings
-    parser.add_argument("--n-trials", type=int, default=50,
+    parser.add_argument("--n-trials", type=int, default=20,
                        help="Number of optimization trials")
     parser.add_argument("--study-name", type=str, default=None,
                        help="Optuna study name (default: {algo}_optimization)")
-    parser.add_argument("--storage", type=str, default="sqlite:////home/scratch/jiayuc2/bao/optuna_study_bao.db",
+    parser.add_argument("--storage", type=str, default="sqlite:////export/ra/baohaoming/fusion/optuna_study_bao.db",
                        help="Optuna storage URL for distributed optimization")
-    parser.add_argument("--output-dir", type=str, default="/home/scratch/jiayuc2/bao/optuna_results_bao",
+    parser.add_argument("--output-dir", type=str, default="/export/ra/baohaoming/fusion/optuna_results_bao/dens",
                        help="Directory to save optimization results")
-    parser.add_argument("--n-jobs", type=int, default=3,
+    parser.add_argument("--n-jobs", type=int, default=4,
                        help="Number of parallel jobs (one per GPU recommended)")
     
     return parser.parse_args()
@@ -60,6 +62,9 @@ class GenericHyperparameterTuner:
         self.gpu_ids = gpu_ids or [base_args.cuda_id]  # Default to single GPU
         self.gpu_index = 0
         self.output_dir = output_dir
+        self._gpu_lock = threading.Lock()
+        self._artifact_lock = threading.Lock()
+        self.trial_artifacts = {}
         
         # Load algorithm configuration from JSON file
         self.config = self._load_config(config_file)
@@ -107,8 +112,9 @@ class GenericHyperparameterTuner:
     
     def _get_next_gpu(self) -> int:
         """Get next GPU ID in round-robin fashion"""
-        gpu_id = self.gpu_ids[self.gpu_index % len(self.gpu_ids)]
-        self.gpu_index += 1
+        with self._gpu_lock:
+            gpu_id = self.gpu_ids[self.gpu_index % len(self.gpu_ids)]
+            self.gpu_index += 1
         return gpu_id
     
     def create_args_for_trial(self, trial):
@@ -118,6 +124,11 @@ class GenericHyperparameterTuner:
         
         # Assign GPU to this trial (round-robin across available GPUs)
         args.cuda_id = self._get_next_gpu()
+        args.trial_id = f"trial_{trial.number}"
+        args.record_params = list(self.config.get("record_params", []))
+        if "trial_id" not in args.record_params:
+            args.record_params.append("trial_id")
+        args.planning_data_path = None
         
         # Suggest tunable hyperparameters based on configuration
         for param_name, param_config in self.config["tunable_params"].items():
@@ -229,49 +240,31 @@ class GenericHyperparameterTuner:
             print(f"Trial {trial.number} (GPU {args.cuda_id}): {param_str}")
             
             # Train the model - pass args directly (not from command line)
-            # self.train_fn(args)
-            
-            # # Extract reward from logs
-            # param_parts = []
-            # for key in sorted(trial.params.keys()):
-            #     value = trial.params[key]
-            #     if isinstance(value, float):
-            #         param_parts.append(f"{key}={value}")
-            #     else:
-            #         param_parts.append(f"{key}={value}")
-            
-            # param_str = "&".join(param_parts)
-            # log_base_dir = os.path.join(
-            #     self.output_dir,
-            #     f"log/{args.task}/{self.algo_name}&{param_str}"
-            # )
-            
-            # print(f"Looking for logs in: {log_base_dir}")
-            # if os.path.exists(log_base_dir):
-            #     reward = self.extract_reward_from_logs(log_base_dir)
-            # else:
-            #     reward = self._find_latest_logs(self.output_dir, args.task)
-            log_dirs = self.train_fn(args)  
+            log_dirs = self.train_fn(args)
+            planning_data_path = getattr(args, "planning_data_path", None)
 
             # Extract reward from logs
             print(f"Looking for logs in: {log_dirs}")
-            if log_dirs and os.path.exists(log_dirs):           
-                            reward = self.extract_reward_from_logs(log_dirs)
+            if log_dirs and os.path.exists(log_dirs):
+                reward = self.extract_reward_from_logs(log_dirs)
             else:
                 print(f"Warning: Log directory not found: {log_dirs}")
                 reward = -1000.0
+
+            artifact = {
+                "trial_id": args.trial_id,
+                "log_dir": log_dirs,
+                "planning_data_path": planning_data_path,
+                "reward": reward,
+                "params": dict(trial.params),
+                "gpu_id": args.cuda_id,
+            }
+            with self._artifact_lock:
+                self.trial_artifacts[trial.number] = artifact
+            for key, value in artifact.items():
+                trial.set_user_attr(key, value)
+
             print(f"Trial {trial.number} completed with reward: {reward:.4f}")
-            import shutil
-            # if os.path.exists(log_base_dir):
-            #     try:
-            #         shutil.rmtree(log_base_dir)
-            #         print(f"Cleaned up logs: {log_base_dir}")
-            if log_dirs and os.path.exists(log_dirs):
-                try:
-                    shutil.rmtree(log_dirs)
-                    print(f"Cleaned up logs: {log_dirs}")
-                except Exception as e:
-                    print(f"Warning: Failed to clean up logs: {e}")
             return reward
             
         except RuntimeError as e:
@@ -324,7 +317,9 @@ def create_base_training_args(algo_name: str, config: Dict, tuning_args) -> argp
     args.cuda_id = tuning_args.cuda_id
     args.seed = tuning_args.seed
     args.algo_name = algo_name
-    
+    args.trial_id = None
+    args.record_params = list(config.get("record_params", []))
+    args.planning_data_path = None
 
     args.base_dir = os.path.join(tuning_args.output_dir, "log")
     # Load default parameters from config
@@ -335,7 +330,7 @@ def create_base_training_args(algo_name: str, config: Dict, tuning_args) -> argp
     return args
 
 
-def save_optimization_results(study, output_dir: str, algo_name: str, tuning_args):
+def save_optimization_results(study, output_dir: str, algo_name: str, tuning_args, trial_artifacts: Dict[int, Dict[str, Any]]):
     """Save optimization results to files"""
     os.makedirs(output_dir, exist_ok=True)
     
@@ -343,19 +338,43 @@ def save_optimization_results(study, output_dir: str, algo_name: str, tuning_arg
 
     task_name = tuning_args.task
     
-    # Save best parameters
-    #best_params_file = os.path.join(output_dir, f"{algo_name}_best_params_{timestamp}.json")
+    best_trial = study.best_trial if study.best_trials else None
+    best_artifact = {}
+    stable_best_planning_path = None
+    if best_trial is not None:
+        best_artifact = trial_artifacts.get(best_trial.number, {})
+        if not best_artifact:
+            best_artifact = {
+                "trial_id": best_trial.user_attrs.get("trial_id"),
+                "log_dir": best_trial.user_attrs.get("log_dir"),
+                "planning_data_path": best_trial.user_attrs.get("planning_data_path"),
+                "reward": best_trial.user_attrs.get("reward"),
+                "params": best_trial.user_attrs.get("params"),
+                "gpu_id": best_trial.user_attrs.get("gpu_id"),
+            }
+
+        planning_data_path = best_artifact.get("planning_data_path")
+        if planning_data_path and os.path.exists(planning_data_path):
+            stable_best_planning_path = os.path.join(
+                output_dir,
+                f"{algo_name}_{task_name}_best_planning_data_{timestamp}.h5"
+            )
+            shutil.copy2(planning_data_path, stable_best_planning_path)
+
     best_params_file = os.path.join(output_dir, f"{algo_name}_{task_name}_best_params_{timestamp}.json")
     best_params = {
         "algorithm": algo_name,
-        "best_value": float(study.best_trial.value) if study.best_trial else None,
-        "best_params": study.best_trial.params if study.best_trial else {},
+        "best_value": float(best_trial.value) if best_trial and best_trial.value is not None else None,
+        "best_params": best_trial.params if best_trial else {},
         "environment": tuning_args.env,
         "task": tuning_args.task,
         "n_trials": tuning_args.n_trials,
         "gpu_ids": tuning_args.gpu_ids or [tuning_args.cuda_id],
         "n_jobs": tuning_args.n_jobs,
-        "timestamp": timestamp
+        "timestamp": timestamp,
+        "best_trial_number": best_trial.number if best_trial else None,
+        "best_log_dir": best_artifact.get("log_dir"),
+        "best_planning_data_path": stable_best_planning_path or best_artifact.get("planning_data_path"),
     }
     
     with open(best_params_file, 'w') as f:
@@ -367,14 +386,28 @@ def save_optimization_results(study, output_dir: str, algo_name: str, tuning_arg
     detailed_results = []
     
     for trial in study.trials:
+        artifact = trial_artifacts.get(trial.number, {})
+        if not artifact:
+            artifact = {
+                "trial_id": trial.user_attrs.get("trial_id"),
+                "log_dir": trial.user_attrs.get("log_dir"),
+                "planning_data_path": trial.user_attrs.get("planning_data_path"),
+                "reward": trial.user_attrs.get("reward"),
+                "params": trial.user_attrs.get("params"),
+                "gpu_id": trial.user_attrs.get("gpu_id"),
+            }
         trial_data = {
             "number": trial.number,
-            "value": float(trial.value) if trial.value else None,
+            "value": float(trial.value) if trial.value is not None else None,
             "params": trial.params,
             "state": str(trial.state),
             "datetime_start": str(trial.datetime_start),
             "datetime_complete": str(trial.datetime_complete),
-            "duration": str(trial.duration) if trial.duration else None
+            "duration": str(trial.duration) if trial.duration else None,
+            "trial_id": artifact.get("trial_id"),
+            "log_dir": artifact.get("log_dir"),
+            "planning_data_path": artifact.get("planning_data_path"),
+            "gpu_id": artifact.get("gpu_id"),
         }
         detailed_results.append(trial_data)
     
@@ -397,18 +430,20 @@ def save_optimization_results(study, output_dir: str, algo_name: str, tuning_arg
         f.write(f"Pruned trials: {len([t for t in study.trials if t.state == TrialState.PRUNED])}\n")
         f.write(f"Failed trials: {len([t for t in study.trials if t.state == TrialState.FAIL])}\n\n")
         
-        if study.best_trial:
+        if best_trial:
             f.write("Best Trial Results:\n")
             f.write("-" * 40 + "\n")
-            f.write(f"Best Value: {study.best_trial.value:.4f}\n")
+            f.write(f"Best Value: {best_trial.value:.4f}\n")
             f.write("Best Parameters:\n")
-            for key, value in study.best_trial.params.items():
+            for key, value in best_trial.params.items():
                 if isinstance(value, float):
                     f.write(f"  {key}: {value:.6f}\n")
                 else:
                     f.write(f"  {key}: {value}\n")
-            f.write(f"\nTrial Number: {study.best_trial.number}\n")
-            f.write(f"Duration: {study.best_trial.duration}\n\n")
+            f.write(f"\nTrial Number: {best_trial.number}\n")
+            f.write(f"Duration: {best_trial.duration}\n")
+            f.write(f"Log Directory: {best_artifact.get('log_dir')}\n")
+            f.write(f"Planning Data Path: {stable_best_planning_path or best_artifact.get('planning_data_path')}\n\n")
         
         f.write("Parameter Importance:\n")
         f.write("-" * 40 + "\n")
@@ -423,8 +458,10 @@ def save_optimization_results(study, output_dir: str, algo_name: str, tuning_arg
     print(f"  Best parameters: {best_params_file}")
     print(f"  Detailed results: {results_file}")
     print(f"  Summary: {summary_file}")
+    if stable_best_planning_path:
+        print(f"  Best planning data: {stable_best_planning_path}")
     
-    return best_params_file
+    return best_params_file, stable_best_planning_path or best_artifact.get("planning_data_path")
 
 
 def _get_search_space(tunable_params: Dict) -> Dict:
@@ -604,27 +641,36 @@ def main():
     print("=" * 70)
     print(f"Number of finished trials: {len(study.trials)}")
     print(f"Number of complete trials: {len([t for t in study.trials if t.state == TrialState.COMPLETE])}")
+    best_trial = study.best_trial if any(t.state == TrialState.COMPLETE for t in study.trials) else None
     
-    if study.best_trial:
-        print(f"\nBest trial value: {study.best_trial.value:.4f}")
+    if best_trial:
+        print(f"\nBest trial value: {best_trial.value:.4f}")
         print("Best parameters:")
-        for key, value in study.best_trial.params.items():
+        for key, value in best_trial.params.items():
             if isinstance(value, float):
                 print(f"  {key}: {value:.6f}")
             else:
                 print(f"  {key}: {value}")
     
     # Save results
-    best_params_file = save_optimization_results(study, tuning_args.output_dir, 
-                                               tuning_args.algo, tuning_args)
+    best_params_file, best_planning_data_path = save_optimization_results(
+        study,
+        tuning_args.output_dir,
+        tuning_args.algo,
+        tuning_args,
+        tuner.trial_artifacts,
+    )
     
     # Generate command for final training
-    if study.best_trial:
-        print(f"\nTo run final training with best parameters:")
+    if best_trial:
+        print(f"\nTo run final training, fill in the best hyperparameters manually and reuse the saved planning data:")
         print(f"python run_{tuning_args.algo}.py --env {tuning_args.env} --task {tuning_args.task} \\")
-        for key, value in study.best_trial.params.items():
+        for key, value in best_trial.params.items():
             param_flag = f"--{key.replace('_', '-')}"
             print(f"  {param_flag} {value} \\")
+        if best_planning_data_path:
+            print(f"  --load-data true \\")
+            print(f"  --planning-data-path {best_planning_data_path} \\")
         print(f"  --cuda-id {tuning_args.cuda_id}")
 
 

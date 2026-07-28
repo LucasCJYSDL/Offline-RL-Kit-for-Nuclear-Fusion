@@ -73,7 +73,7 @@ def get_args():
     parser.add_argument("--lambda_lr", type=float, default=1e-3) # fine-tune
 
     #!!! what you need to specify
-    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
+    parser.add_argument("--env", type=str, default="profile_control_new") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="rotation") #?
     parser.add_argument("--update_hidden_states", type=bool, default=False) # whether to update the hidden states in the offline dataset, since the dynamics model is being updated with the rl policy
     parser.add_argument("--seed", type=int, default=1)
@@ -82,7 +82,9 @@ def get_args():
     return parser.parse_args()
 
 
-def train(args=get_args()):
+def train(args=None):    
+    if args is None:
+        args = get_args()
     # set args
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
     if args.grad_mode == 3 and args.onpolicy_rollout_batch_size == 2500 and args.small_traj_batch:

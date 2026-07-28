@@ -22,7 +22,7 @@ from dynamics_toolbox.utils.storage.model_storage import (
 )
 
 import fusion_control
-import os
+
 os.environ["HYDRA_FULL_ERROR"] = "1"
 
 @hydra.main(

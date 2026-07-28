@@ -1,0 +1,18 @@
+defaults:
+  - tpnn_noshape_gas_benchmark_base
+  - _self_
+
+experiment_name: "tpnn_noshape_gas_benchmark_step_two_logvar"
+save_path: "/data/models/tpnn_noshape_gas_benchmark_step_two_logvar"
+
+# TPNN appends /${seed} internally when locating the Stage-1 checkpoint, so
+# load_dir must point to the Stage-1 parent rather than its seed directory.
+model:
+  load_dir: "/data/models/tpnn_noshape_gas_benchmark_step_one_mse"
+  freeze_all_but: "logvar_net"
+  loss_fn_str: "NLL"
+  mse_wt: 0.0
+  nll_wt: 1.0
+
+early_stopping:
+  patience: 100

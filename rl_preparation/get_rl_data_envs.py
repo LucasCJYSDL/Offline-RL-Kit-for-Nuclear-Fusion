@@ -196,71 +196,51 @@ def load_offline_data(env, tracking_target, is_il, is_val=True, load_hidden_stat
 
     return offline_data, tracking_data
 
-# get the offline rl data (in d4rl format) and training
-def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True, load_hidden_states=False):
-    offline_data, tracking_data = load_offline_data(
-        env_id,
-        task,
-        is_il,
-        is_val=is_val,
-        load_hidden_states=load_hidden_states,
-    )
-    bootstrap_shot_id = offline_data['bootstrap_tracking_shot_id']
-
-
+def _get_env_and_sa_processor_classes(env_id):
     if env_id == 'base':
         from envs.base_env import NFBaseEnv, SA_processor
-        sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = NFBaseEnv(
-            evaluation_model_dir,
+        return NFBaseEnv, SA_processor
+
+    elif env_id == 'profile_control':
+        from envs.profile_control_env import ProfileControlEnv
+        from envs.base_env import SA_processor
+        return ProfileControlEnv, SA_processor
+    
+    elif env_id == 'profile_control_new':
+        from envs.profile_control_new_state_env import ProfileControlEnv
+        from envs.profile_control_new_state_env import SA_processor
+        return ProfileControlEnv, SA_processor
+
+    elif env_id == 'fusion_env':
+        from envs.fusion_env import FusionEnv, SA_processor
+        return FusionEnv, SA_processor
+    
+    else:
+        raise NotImplementedError
+
+
+def _make_env(env_id, env_class, model_dir, sa_processor, offline_data, tracking_data, bootstrap_shot_id, device):
+    if env_id == 'base':
+        return env_class(
+            model_dir,
             sa_processor,
             offline_data,
             tracking_data[bootstrap_shot_id],
             bootstrap_shot_id,
             device,
-        ) # this is the env for evaluation
-
-    elif env_id == 'profile_control':
-        from envs.profile_control_env import ProfileControlEnv
-        from envs.base_env import SA_processor
-        sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = ProfileControlEnv(
-            evaluation_model_dir,
-            sa_processor,
-            offline_data,
-            tracking_data,
-            bootstrap_shot_id,
-            device,
-        ) # this is the env for evaluation
-    
-    elif env_id == 'profile_control_new':
-        from envs.profile_control_new_state_env import ProfileControlEnv
-        from envs.profile_control_new_state_env import SA_processor
-        sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = ProfileControlEnv(
-            evaluation_model_dir,
-            sa_processor,
-            offline_data,
-            tracking_data,
-            bootstrap_shot_id,
-            device,
-        ) # this is the env for evaluation
-
-    elif env_id == 'fusion_env':
-        from envs.fusion_env import FusionEnv, SA_processor
-        sa_processor = SA_processor(offline_data, tracking_data, device)
-        env = FusionEnv(
-            evaluation_model_dir,
-            sa_processor,
-            offline_data,
-            tracking_data,
-            bootstrap_shot_id,
-            device,
         )
-    
-    else:
-        raise NotImplementedError
-    
+
+    return env_class(
+        model_dir,
+        sa_processor,
+        offline_data,
+        tracking_data,
+        bootstrap_shot_id,
+        device,
+    )
+
+
+def _postprocess_offline_data(env_id, offline_data, sa_processor):
     # collect the data for rl training: (s, a, r, s', d), where d denotes the termination signal
     # For fusion_env, the rewards and actions are processed in the env step function.
     if(env_id != "fusion_env"):
@@ -286,7 +266,69 @@ def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True, load_hidden
                 + targets_in_obs * len(track_signals) * num_targets_in_obs
                 + add_tm_probs_to_obs)
         offline_data['act_dim'] = len(action_space)
+
+
+# get the offline rl data (in d4rl format) and training
+def get_rl_data_envs(env_id, task, device, is_il=False, is_val=True, load_hidden_states=False):
+    offline_data, tracking_data = load_offline_data(
+        env_id,
+        task,
+        is_il,
+        is_val=is_val,
+        load_hidden_states=load_hidden_states,
+    )
+    bootstrap_shot_id = offline_data['bootstrap_tracking_shot_id']
+    env_class, sa_processor_class = _get_env_and_sa_processor_classes(env_id)
+    sa_processor = sa_processor_class(offline_data, tracking_data, device)
+    env = _make_env(
+        env_id,
+        env_class,
+        evaluation_model_dir,
+        sa_processor,
+        offline_data,
+        tracking_data,
+        bootstrap_shot_id,
+        device,
+    ) # this is the env for evaluation
+
+    _postprocess_offline_data(env_id, offline_data, sa_processor)
     return offline_data, sa_processor, env, training_model_dir
+
+
+def get_rl_data_dual_envs(env_id, task, device, is_il=False, is_val=True, load_hidden_states=False):
+    offline_data, tracking_data = load_offline_data(
+        env_id,
+        task,
+        is_il,
+        is_val=is_val,
+        load_hidden_states=load_hidden_states,
+    )
+    bootstrap_shot_id = offline_data['bootstrap_tracking_shot_id']
+    env_class, sa_processor_class = _get_env_and_sa_processor_classes(env_id)
+    sa_processor = sa_processor_class(offline_data, tracking_data, device)
+    train_env = _make_env(
+        env_id,
+        env_class,
+        training_model_dir,
+        sa_processor,
+        offline_data,
+        tracking_data,
+        bootstrap_shot_id,
+        device,
+    )
+    eval_env = _make_env(
+        env_id,
+        env_class,
+        evaluation_model_dir,
+        sa_processor,
+        offline_data,
+        tracking_data,
+        bootstrap_shot_id,
+        device,
+    )
+
+    _postprocess_offline_data(env_id, offline_data, sa_processor)
+    return offline_data, sa_processor, train_env, eval_env, training_model_dir, evaluation_model_dir
     
 
 if __name__ == "__main__":

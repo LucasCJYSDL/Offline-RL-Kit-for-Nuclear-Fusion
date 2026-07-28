@@ -1,0 +1,16 @@
+defaults:
+  - tpnn_noshape_gas_benchmark_base
+  - _self_
+
+experiment_name: "tpnn_noshape_gas_benchmark_step_one_mse"
+save_path: "/data/models/tpnn_noshape_gas_benchmark_step_one_mse"
+
+# Stage 1 fits the predictive mean. The log-variance output is present in the
+# architecture but does not contribute to the MSE objective.
+model:
+  loss_fn_str: "MSE"
+  mse_wt: 1.0
+  nll_wt: 0.0
+
+early_stopping:
+  patience: 150
