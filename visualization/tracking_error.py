@@ -55,11 +55,12 @@ alg_base_dirs = {
     # #"BAMCTS":"/home/scratch/jiayuc2/bao/Eval_optuna/rotation/bambrl_mcts&rollout_length=2&penalty_coef=0.7067621971505375&use_ba=False&search_alpha=0.8/rotation/results/seed_1&timestamp_25-1212-144528",
     # # "ROMBRL":"/home/scratch/jiayuc2/temp_1106/rombrl&grad_mode=1&sl_weight=1000.0&actor_training_epoch=10&onpolicy_rollout_batch_size=2500&onpolicy_rollout_length=10&small_traj_batch=False/rotation/results/seed_1&timestamp_25-1031-122233",
     # # "RAMBO":"/home/scratch/jiayuc2/bao/Eval_optuna/rotation/rambo&rollout_length=2&adv_weight=6.471144404147533e-05/rotation/results/seed_1&timestamp_25-1212-145936",
-    "MCQ":"/export/ra/baohaoming/fusion/profile/temp/mcq&lmbda=0.860632&num_sampled_actions=10/temp/test/results/seed_1&timestamp_26-0415-160537",
-    "IQL":"/export/ra/baohaoming/fusion/profile/temp/iql&expectile=0.515934&temperature=0.670086/temp/test/results/seed_1&timestamp_26-0415-160607",
-    #"GCIL": "/export/ra/baohaoming/fusion/profile/pres_EFIT01/gcil&batch_size=256/pres_EFIT01/test/results/seed_1&timestamp_26-0420-112055",
-    "BAMCTS":"/export/ra/baohaoming/fusion/profile/temp/bambrl_mcts&rollout_length=1&penalty_coef=1.289667&use_ba=True&search_alpha=0.5/temp/test/results/seed_1&timestamp_26-0420-174334",
-    "RAMBO": "/export/ra/baohaoming/fusion/profile/temp/rambo&rollout_length=5&adv_weight=9.5e-05/temp/test/results/seed_1&timestamp_26-0417-104924"
+    # "MCQ":"/export/ra/baohaoming/fusion/profile/temp/mcq&lmbda=0.860632&num_sampled_actions=10/temp/test/results/seed_1&timestamp_26-0415-160537",
+    # "IQL":"/export/ra/baohaoming/fusion/profile/temp/iql&expectile=0.515934&temperature=0.670086/temp/test/results/seed_1&timestamp_26-0415-160607",
+    # #"GCIL": "/export/ra/baohaoming/fusion/profile/pres_EFIT01/gcil&batch_size=256/pres_EFIT01/test/results/seed_1&timestamp_26-0420-112055",
+    # "BAMCTS":"/export/ra/baohaoming/fusion/profile/temp/bambrl_mcts&rollout_length=1&penalty_coef=1.289667&use_ba=True&search_alpha=0.5/temp/test/results/seed_1&timestamp_26-0420-174334",
+    # "RAMBO": "/export/ra/baohaoming/fusion/profile/temp/rambo&rollout_length=5&adv_weight=9.5e-05/temp/test/results/seed_1&timestamp_26-0417-104924"
+    "PPO_Single2":"/export/ra/baohaoming/rebuttal/profile/ppo_tpnn_full_history&clip_range=0.148&total_timesteps=800000&learning_rate=0.003&gae_lambda=0.98&gamma=0.952&batch_size=2048&n_steps=2048&tpnn_microbatch_size=1024/temp/test/results/seed_1&timestamp_26-0729-164705"
 }
 
 results = {}
@@ -118,7 +119,7 @@ for algo in alg_base_dirs.keys():
 
 
 df.index.name = "Algorithm"
-save_path = "/export/ra/baohaoming/fusion/results/tracking_error_summary_temp1.csv"
+save_path = "/export/ra/baohaoming/rebuttal/results/tracking_error_summary_temp_ppo_single_v2.csv"
 # save_path = "/home/scratch/jiayuc2/bao/Eval_csv/rotation/tracking_error_summary_rambo.csv"
 os.makedirs(os.path.dirname(save_path), exist_ok=True)
 df.to_csv(save_path)
